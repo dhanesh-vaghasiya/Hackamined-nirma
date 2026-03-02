@@ -1,5 +1,5 @@
 # Virtual environment
-venv/
+hack-env/
 
 # Environment variables
 .env
