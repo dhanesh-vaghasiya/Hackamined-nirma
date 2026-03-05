@@ -24,9 +24,11 @@ def create_app():
     # Register blueprints
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
+    from app.routes.user_input import user_input_bp
 
     app.register_blueprint(main_bp, url_prefix="/api")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(user_input_bp, url_prefix="/api/user-input")
 
     # Create database tables
     with app.app_context():
