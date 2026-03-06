@@ -7,7 +7,6 @@ from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
-
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
@@ -28,7 +27,7 @@ def register():
 
     # Check if user already exists
     if User.query.filter_by(email=email).first():
-        return jsonify({"message": "Email already registered"}), 409
+        return jsonify({"message": "Invalid credentials"}), 409
 
     # Hash password and create user
     hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
