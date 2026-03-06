@@ -1,18 +1,11 @@
 """
 Roadmap.sh API tool.
-Uses me.py to fetch real roadmaps from roadmap.sh public API.
+Fetches real roadmaps from the roadmap.sh public API.
 """
 
 import logging
-import sys
-import os
 
-# Add backend root to path so we can import me.py
-_backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-if _backend_root not in sys.path:
-    sys.path.insert(0, _backend_root)
-
-from me import fetch_available_roadmaps, fetch_roadmap  # noqa: E402
+from app.services.agent.tools.roadmap_fetcher import fetch_available_roadmaps, fetch_roadmap
 
 logger = logging.getLogger(__name__)
 

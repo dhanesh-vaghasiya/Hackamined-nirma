@@ -316,7 +316,7 @@ Use the available tools to gather market data, then recommend the single best sk
             "reasoning": "Default recommendation due to agent timeout.",
         }
 
-    # ── Step 2: Generate roadmap via roadmap.sh (me.py) ─
+    # ── Step 2: Generate roadmap via roadmap.sh ─────────
     raw_roadmap = generate_roadmap_via_api(recommended_skill)
     pipeline_result["raw_roadmap"] = raw_roadmap
 
