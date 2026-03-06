@@ -9,7 +9,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
+from urllib.parse import quote_plus
 
 import requests
 
@@ -307,13 +310,90 @@ Build a practical, week-by-week roadmap with REAL courses from real platforms (C
         log.error("Groq roadmap missing phases")
         return None
 
+    validated_phases = _validate_and_fix_urls(parsed["phases"])
+
     return {
         "target_role": parsed.get("target_role", chosen_role),
         "total_weeks": parsed.get("total_weeks", 12),
-        "phases": parsed["phases"],
+        "phases": validated_phases,
         "expected_outcome": parsed.get("expected_outcome", ""),
         "certification_tip": parsed.get("certification_tip", ""),
     }
+
+
+# ── URL validation + YouTube fallback ────────────────────────────────────
+
+def _check_url(url: str) -> bool:
+    """Return True if the URL responds with a 2xx/3xx status."""
+    if not url or not url.startswith("http"):
+        return False
+    try:
+        r = requests.head(url, timeout=6, allow_redirects=True,
+                          headers={"User-Agent": "Mozilla/5.0"})
+        return r.status_code < 400
+    except Exception:
+        return False
+
+
+def _youtube_search_url(title: str, provider: str = "") -> str:
+    """Search YouTube and return a direct video link for the first result.
+    Falls back to a search page URL if extraction fails."""
+    q = f"{title} {provider} full course tutorial".strip()
+    search_url = f"https://www.youtube.com/results?search_query={quote_plus(q)}"
+    try:
+        resp = requests.get(
+            search_url, timeout=8,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                     "Accept-Language": "en-US,en;q=0.9"},
+        )
+        # YouTube embeds JSON with videoId in the HTML
+        ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', resp.text)
+        if ids:
+            return f"https://www.youtube.com/watch?v={ids[0]}"
+    except Exception:
+        log.debug("YouTube search fallback failed for: %s", q)
+    return search_url
+
+
+def _validate_and_fix_urls(phases: list[dict]) -> list[dict]:
+    """Check every step URL in parallel; replace dead ones with YouTube search."""
+    # Collect all (phase_idx, step_idx, url) tuples
+    tasks: list[tuple[int, int, str]] = []
+    for pi, phase in enumerate(phases):
+        for si, step in enumerate(phase.get("steps", [])):
+            url = step.get("url", "")
+            if url and url.startswith("http"):
+                tasks.append((pi, si, url))
+
+    if not tasks:
+        return phases
+
+    results: dict[tuple[int, int], bool] = {}
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        future_map = {
+            pool.submit(_check_url, url): (pi, si)
+            for pi, si, url in tasks
+        }
+        for future in as_completed(future_map):
+            key = future_map[future]
+            try:
+                results[key] = future.result()
+            except Exception:
+                results[key] = False
+
+    # Replace dead URLs with YouTube fallback
+    for (pi, si), alive in results.items():
+        step = phases[pi]["steps"][si]
+        if not alive:
+            step["url"] = _youtube_search_url(
+                step.get("title", ""), step.get("provider", "")
+            )
+            step["source"] = "youtube"
+            step["provider"] = "YouTube"
+        else:
+            step["source"] = "original"
+
+    return phases
 
 
 # ── Detailed (topic-tree) roadmap via Groq ──────────────────────────────
