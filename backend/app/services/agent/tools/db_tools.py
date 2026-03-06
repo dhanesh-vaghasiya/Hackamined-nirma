@@ -1,243 +1,282 @@
 """
-Dummy database tools for the AI agent.
-These return in-memory data that mirrors the real DB schema.
-Replace these functions with real DB queries later.
+Database tools for the AI agent.
+Real DB queries against the app's PostgreSQL database for skill trends,
+AI vulnerability scores, and worker intelligence.
 """
 
+from __future__ import annotations
 
-# ── Skill Intel Data ─────────────────────────────────────
-_SKILL_INTEL = {
-    "Python": {
-        "skill_name": "Python", "demand_score": 92.0, "growth_rate": 18.5,
-        "salary_impact": 30.0, "ai_relevance_score": 95.0,
-        "top_industries": ["IT", "Finance", "Healthcare"],
-        "job_postings_count": 45000,
-    },
-    "Prompt Engineering": {
-        "skill_name": "Prompt Engineering", "demand_score": 88.0, "growth_rate": 142.0,
-        "salary_impact": 25.0, "ai_relevance_score": 99.0,
-        "top_industries": ["AI/ML", "Marketing", "Education"],
-        "job_postings_count": 12000,
-    },
-    "Excel": {
-        "skill_name": "Excel", "demand_score": 75.0, "growth_rate": -5.0,
-        "salary_impact": 8.0, "ai_relevance_score": 30.0,
-        "top_industries": ["Finance", "Admin", "Retail"],
-        "job_postings_count": 62000,
-    },
-    "Data Analytics": {
-        "skill_name": "Data Analytics", "demand_score": 90.0, "growth_rate": 35.0,
-        "salary_impact": 28.0, "ai_relevance_score": 85.0,
-        "top_industries": ["IT", "E-commerce", "BFSI"],
-        "job_postings_count": 38000,
-    },
-    "Cybersecurity": {
-        "skill_name": "Cybersecurity", "demand_score": 85.0, "growth_rate": 28.0,
-        "salary_impact": 35.0, "ai_relevance_score": 60.0,
-        "top_industries": ["IT", "Banking", "Government"],
-        "job_postings_count": 22000,
-    },
-    "Tally": {
-        "skill_name": "Tally", "demand_score": 55.0, "growth_rate": -12.0,
-        "salary_impact": 5.0, "ai_relevance_score": 15.0,
-        "top_industries": ["Finance", "SME", "Retail"],
-        "job_postings_count": 28000,
-    },
-    "Power BI": {
-        "skill_name": "Power BI", "demand_score": 82.0, "growth_rate": 22.0,
-        "salary_impact": 20.0, "ai_relevance_score": 55.0,
-        "top_industries": ["Finance", "Consulting", "IT"],
-        "job_postings_count": 18000,
-    },
-    "SQL": {
-        "skill_name": "SQL", "demand_score": 88.0, "growth_rate": 10.0,
-        "salary_impact": 22.0, "ai_relevance_score": 70.0,
-        "top_industries": ["IT", "Finance", "E-commerce"],
-        "job_postings_count": 50000,
-    },
-    "Cloud Computing": {
-        "skill_name": "Cloud Computing", "demand_score": 87.0, "growth_rate": 30.0,
-        "salary_impact": 32.0, "ai_relevance_score": 75.0,
-        "top_industries": ["IT", "Fintech", "Healthcare"],
-        "job_postings_count": 28000,
-    },
-    "AI Literacy": {
-        "skill_name": "AI Literacy", "demand_score": 80.0, "growth_rate": 118.0,
-        "salary_impact": 15.0, "ai_relevance_score": 98.0,
-        "top_industries": ["Education", "HR", "Marketing"],
-        "job_postings_count": 8000,
-    },
-    "Machine Learning": {
-        "skill_name": "Machine Learning", "demand_score": 91.0, "growth_rate": 25.0,
-        "salary_impact": 38.0, "ai_relevance_score": 97.0,
-        "top_industries": ["AI/ML", "Healthcare", "Finance"],
-        "job_postings_count": 32000,
-    },
-    "Financial Modelling": {
-        "skill_name": "Financial Modelling", "demand_score": 72.0, "growth_rate": 8.0,
-        "salary_impact": 25.0, "ai_relevance_score": 40.0,
-        "top_industries": ["Banking", "Consulting", "Private Equity"],
-        "job_postings_count": 12000,
-    },
-}
+from sqlalchemy import func, desc
 
-# ── AI Vulnerability Data ────────────────────────────────
-_AI_VULNERABILITY = {
-    "Data Entry Operator": {
-        "job_role": "Data Entry Operator", "vulnerability_score": 0.89,
-        "risk_level": "high",
-        "explanation": "Highly repetitive, rule-based tasks easily automated by OCR and RPA.",
-        "factors": {"repetitiveness": 0.95, "cognitive_complexity": 0.15, "human_interaction": 0.10},
-    },
-    "Junior Accountant": {
-        "job_role": "Junior Accountant", "vulnerability_score": 0.72,
-        "risk_level": "high",
-        "explanation": "Bookkeeping and routine filings are automatable; advisory work is safer.",
-        "factors": {"repetitiveness": 0.80, "cognitive_complexity": 0.40, "human_interaction": 0.30},
-    },
-    "Customer Support Executive": {
-        "job_role": "Customer Support Executive", "vulnerability_score": 0.65,
-        "risk_level": "medium",
-        "explanation": "Chatbots handle L1 queries; complex escalations still need humans.",
-        "factors": {"repetitiveness": 0.60, "cognitive_complexity": 0.45, "human_interaction": 0.75},
-    },
-    "Content Writer": {
-        "job_role": "Content Writer", "vulnerability_score": 0.58,
-        "risk_level": "medium",
-        "explanation": "AI generates generic content; creative strategy and brand voice remain human.",
-        "factors": {"repetitiveness": 0.40, "cognitive_complexity": 0.65, "human_interaction": 0.50},
-    },
-    "Warehouse Supervisor": {
-        "job_role": "Warehouse Supervisor", "vulnerability_score": 0.41,
-        "risk_level": "low",
-        "explanation": "Physical oversight, team management, and exception handling are hard to automate.",
-        "factors": {"repetitiveness": 0.35, "cognitive_complexity": 0.55, "human_interaction": 0.80},
-    },
-    "Software Developer": {
-        "job_role": "Software Developer", "vulnerability_score": 0.32,
-        "risk_level": "low",
-        "explanation": "AI assists coding but design decisions, debugging, and architecture remain human-driven.",
-        "factors": {"repetitiveness": 0.20, "cognitive_complexity": 0.90, "human_interaction": 0.55},
-    },
-}
-
-# ── Skill Trend Data ─────────────────────────────────────
-_SKILL_TRENDS = {
-    "top_growing_skills": {
-        "Prompt Engineering": 142, "AI Literacy": 118, "Data Analytics": 95,
-        "Cloud Computing": 88, "Cybersecurity": 76, "Python": 45,
-        "Machine Learning": 40, "Power BI": 35, "SQL": 20,
-    },
-    "declining_skills": {
-        "Tally": -12, "Excel": -5, "Manual Testing": -18,
-        "Data Entry": -25, "Typing": -20,
-    },
-}
-
-# ── Role → Related Skills Mapping ────────────────────────
-_ROLE_SKILLS = {
-    "Data Entry Operator": ["Excel", "Tally", "Data Entry", "Typing"],
-    "Junior Accountant": ["Accounting", "Tally", "GST Filing", "Excel", "QuickBooks"],
-    "Customer Support Executive": ["Communication", "CRM", "Ticketing Systems", "English"],
-    "Content Writer": ["SEO Writing", "Content Marketing", "Copywriting", "WordPress", "Canva"],
-    "Warehouse Supervisor": ["Inventory Management", "Logistics", "WMS", "Supply Chain"],
-    "Software Developer": ["Python", "JavaScript", "SQL", "Git", "Cloud Computing"],
-    "Financial Analyst": ["Financial Modelling", "Power BI", "Excel", "SQL", "Statistics"],
-    "Data Analyst": ["Python", "SQL", "Data Visualization", "Statistics", "Excel"],
-    "Product Manager": ["Product Thinking", "User Research", "SQL", "Wireframing", "Analytics"],
-}
-
-# ── Processed User Outputs (mock job market signals) ─────
-_PROCESSED_OUTPUTS = {
-    1: {
-        "skills": ["Excel", "Tally", "Data Entry", "Typing"],
-        "tools": ["MS Excel", "Tally ERP"],
-        "tasks": ["Manual data entry", "Invoice processing", "Spreadsheet maintenance"],
-        "aspirations": [],
-    },
-    2: {
-        "skills": ["Accounting", "GST Filing", "Bookkeeping", "Tally", "QuickBooks"],
-        "tools": ["Tally ERP", "QuickBooks", "MS Excel"],
-        "tasks": ["GST return filing", "Ledger maintenance", "Bank reconciliation"],
-        "aspirations": [],
-    },
-    3: {
-        "skills": ["Communication", "CRM", "Problem Solving"],
-        "tools": ["Freshdesk", "Zendesk"],
-        "tasks": ["Customer calls", "Ticket resolution", "Escalation handling"],
-        "aspirations": ["Product Management", "UX Research"],
-    },
-    4: {
-        "skills": ["SEO Writing", "Content Marketing", "Copywriting", "WordPress", "Canva"],
-        "tools": ["WordPress", "Canva", "Google Analytics"],
-        "tasks": ["Blog writing", "Social media content creation", "Keyword research"],
-        "aspirations": [],
-    },
-    5: {
-        "skills": ["Inventory Management", "Logistics", "WMS", "Supply Chain"],
-        "tools": ["WMS Software", "SAP", "Excel"],
-        "tasks": ["Stock auditing", "Dispatch coordination", "Vendor communication"],
-        "aspirations": [],
-    },
-}
+from app import db
+from app.models import (
+    AiVulnerabilityScore,
+    City,
+    Job,
+    SkillTrend,
+    WorkerProfile,
+)
 
 
 # ═══════════════════════════════════════════════════════════
 # Tool Functions (called by the agent)
 # ═══════════════════════════════════════════════════════════
 
-def get_skill_trends():
-    """Return current skill demand trends (growing and declining)."""
-    return _SKILL_TRENDS
+
+def get_skill_trends() -> dict:
+    """Return current skill demand trends (growing and declining) from the DB."""
+    all_periods = [
+        r[0]
+        for r in db.session.query(SkillTrend.period)
+        .distinct()
+        .order_by(desc(SkillTrend.period))
+        .all()
+    ]
+    if len(all_periods) < 4:
+        return {"top_growing_skills": {}, "declining_skills": {}}
+
+    recent = all_periods[:3]
+    prev = all_periods[3:6]
+
+    def _demand(periods):
+        rows = (
+            db.session.query(
+                SkillTrend.skill_name,
+                func.sum(SkillTrend.demand_count).label("d"),
+            )
+            .filter(SkillTrend.period.in_(periods))
+            .group_by(SkillTrend.skill_name)
+            .all()
+        )
+        return {r.skill_name: r.d for r in rows}
+
+    cur = _demand(recent)
+    pre = _demand(prev)
+
+    growing = {}
+    declining = {}
+    for skill, demand in cur.items():
+        prev_d = pre.get(skill, 0)
+        if prev_d > 0:
+            pct = round(((demand - prev_d) / prev_d) * 100, 1)
+        elif demand > 0:
+            pct = 100.0
+        else:
+            continue
+        if demand < 20:
+            continue
+        if pct > 5:
+            growing[skill] = pct
+        elif pct < -5:
+            declining[skill] = pct
+
+    top_growing = dict(sorted(growing.items(), key=lambda x: x[1], reverse=True)[:15])
+    top_declining = dict(sorted(declining.items(), key=lambda x: x[1])[:10])
+
+    return {"top_growing_skills": top_growing, "declining_skills": top_declining}
 
 
-def get_ai_vulnerability(role: str, city: str = ""):
-    """Return AI automation vulnerability for a given job role."""
-    # Try exact match first, then fuzzy
-    for key, val in _AI_VULNERABILITY.items():
-        if role.lower() in key.lower() or key.lower() in role.lower():
-            result = dict(val)
-            if city:
-                result["city"] = city
-            return result
+def get_ai_vulnerability(role: str, city: str = "") -> dict:
+    """Return AI automation vulnerability for a given job role from DB."""
+    q = db.session.query(AiVulnerabilityScore).filter(
+        AiVulnerabilityScore.job_title_norm.ilike(f"%{role}%")
+    )
+    if city and city.lower() != "all-india":
+        q = q.join(City, AiVulnerabilityScore.city_id == City.id).filter(
+            func.lower(City.name) == city.lower()
+        )
+    vuln = q.order_by(desc(AiVulnerabilityScore.score)).first()
+
+    if vuln:
+        city_name = vuln.city.name if vuln.city else "All India"
+        return {
+            "job_role": vuln.job_title_norm,
+            "vulnerability_score": vuln.score / 100,
+            "risk_level": (
+                "critical" if vuln.score >= 75
+                else "high" if vuln.score >= 50
+                else "medium" if vuln.score >= 25
+                else "low"
+            ),
+            "city": city_name,
+            "explanation": vuln.reason or "No detailed explanation available.",
+            "confidence": vuln.confidence,
+        }
+
     return {
-        "job_role": role, "vulnerability_score": 0.50,
-        "risk_level": "medium", "city": city,
+        "job_role": role,
+        "vulnerability_score": 0.50,
+        "risk_level": "medium",
+        "city": city or "All India",
         "explanation": f"No specific data for '{role}'. Estimated medium risk.",
-        "factors": {},
     }
 
 
-def get_skill_intel(skill: str):
-    """Return intelligence data for a specific skill."""
-    for key, val in _SKILL_INTEL.items():
-        if skill.lower() == key.lower():
-            return val
-    return {"skill_name": skill, "demand_score": None, "message": "No data available"}
+def get_skill_intel(skill: str) -> dict:
+    """Return intelligence data for a specific skill from DB."""
+    all_periods = [
+        r[0]
+        for r in db.session.query(SkillTrend.period)
+        .distinct()
+        .order_by(desc(SkillTrend.period))
+        .all()
+    ]
+    recent = all_periods[:3] if len(all_periods) >= 3 else all_periods
+    prev = all_periods[3:6] if len(all_periods) >= 6 else []
+
+    cur_demand = (
+        db.session.query(func.sum(SkillTrend.demand_count))
+        .filter(
+            func.lower(SkillTrend.skill_name) == skill.lower(),
+            SkillTrend.period.in_(recent),
+        )
+        .scalar()
+    ) or 0
+
+    prev_demand = 0
+    if prev:
+        prev_demand = (
+            db.session.query(func.sum(SkillTrend.demand_count))
+            .filter(
+                func.lower(SkillTrend.skill_name) == skill.lower(),
+                SkillTrend.period.in_(prev),
+            )
+            .scalar()
+        ) or 0
+
+    if prev_demand > 0:
+        growth_rate = round(((cur_demand - prev_demand) / prev_demand) * 100, 1)
+    elif cur_demand > 0:
+        growth_rate = 100.0
+    else:
+        growth_rate = 0.0
+
+    job_count = (
+        db.session.query(func.count(Job.id))
+        .filter(Job.title_norm.ilike(f"%{skill}%"))
+        .scalar()
+    ) or 0
+
+    top_cities = (
+        db.session.query(City.name, func.sum(SkillTrend.demand_count).label("d"))
+        .join(City, SkillTrend.city_id == City.id)
+        .filter(func.lower(SkillTrend.skill_name) == skill.lower())
+        .group_by(City.name)
+        .order_by(desc("d"))
+        .limit(5)
+        .all()
+    )
+
+    return {
+        "skill_name": skill,
+        "current_demand": cur_demand,
+        "growth_rate": growth_rate,
+        "job_postings_count": job_count,
+        "top_cities": [{"city": c, "demand": int(d)} for c, d in top_cities],
+    }
 
 
-def get_related_skills(skill_or_role: str):
-    """Return skills related to a given skill or role."""
-    # Check role mapping
-    for key, skills in _ROLE_SKILLS.items():
-        if skill_or_role.lower() in key.lower() or key.lower() in skill_or_role.lower():
-            return {"role": key, "related_skills": skills}
-    # Check skill intel for industries overlap
-    for key, val in _SKILL_INTEL.items():
-        if skill_or_role.lower() == key.lower():
-            related = [s for s in _SKILL_INTEL if s != key][:5]
-            return {"skill": key, "related_skills": related}
-    return {"query": skill_or_role, "related_skills": []}
+def get_related_skills(skill_or_role: str) -> dict:
+    """Return skills related to a given role using co-occurring skill trends."""
+    # Find cities where jobs matching this role exist
+    city_ids = [
+        r[0]
+        for r in db.session.query(Job.city_id)
+        .filter(Job.title_norm.ilike(f"%{skill_or_role}%"))
+        .distinct()
+        .limit(10)
+        .all()
+        if r[0]
+    ]
+
+    if not city_ids:
+        # Fallback: top trending skills overall
+        rows = (
+            db.session.query(SkillTrend.skill_name)
+            .group_by(SkillTrend.skill_name)
+            .order_by(desc(func.sum(SkillTrend.demand_count)))
+            .limit(10)
+            .all()
+        )
+        return {
+            "query": skill_or_role,
+            "related_skills": [r.skill_name for r in rows],
+        }
+
+    # Skills trending in the same cities as this role
+    rows = (
+        db.session.query(
+            SkillTrend.skill_name,
+            func.sum(SkillTrend.demand_count).label("d"),
+        )
+        .filter(SkillTrend.city_id.in_(city_ids))
+        .group_by(SkillTrend.skill_name)
+        .order_by(desc("d"))
+        .limit(10)
+        .all()
+    )
+
+    return {
+        "query": skill_or_role,
+        "related_skills": [r.skill_name for r in rows],
+        "cities_sampled": len(city_ids),
+    }
 
 
-def get_processed_output(user_id: int):
-    """Return processed analysis output for a user (skills, tools, tasks, aspirations)."""
-    return _PROCESSED_OUTPUTS.get(user_id, {
+def get_processed_output(user_id: int) -> dict:
+    """Return processed profile data for a user from the DB."""
+    profile = (
+        db.session.query(WorkerProfile)
+        .filter(
+            (WorkerProfile.id == user_id) | (WorkerProfile.user_id == user_id)
+        )
+        .order_by(WorkerProfile.created_at.desc())
+        .first()
+    )
+
+    if profile:
+        return {
+            "skills": profile.extracted_skills or [],
+            "tools": [],
+            "tasks": profile.extracted_tasks or [],
+            "aspirations": profile.aspirations or [],
+            "domain": profile.domain,
+            "job_title": profile.job_title,
+        }
+
+    return {
         "skills": [], "tools": [], "tasks": [], "aspirations": [],
         "message": "No processed data for this user",
-    })
+    }
 
 
-def get_all_skill_intel():
-    """Return all skill intelligence data."""
-    return list(_SKILL_INTEL.values())
+def get_all_skill_intel() -> list:
+    """Return intelligence data for top tracked skills."""
+    all_periods = [
+        r[0]
+        for r in db.session.query(SkillTrend.period)
+        .distinct()
+        .order_by(desc(SkillTrend.period))
+        .all()
+    ]
+    recent = all_periods[:3] if all_periods else []
+
+    if not recent:
+        return []
+
+    rows = (
+        db.session.query(
+            SkillTrend.skill_name,
+            func.sum(SkillTrend.demand_count).label("demand"),
+        )
+        .filter(SkillTrend.period.in_(recent))
+        .group_by(SkillTrend.skill_name)
+        .order_by(desc("demand"))
+        .limit(30)
+        .all()
+    )
+
+    return [
+        {"skill_name": r.skill_name, "current_demand": int(r.demand)}
+        for r in rows
+    ]
