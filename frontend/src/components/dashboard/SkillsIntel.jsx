@@ -6,12 +6,17 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Radar as RadarIcon, Sparkles, X, Search, Plus, Briefcase } from "lucide-react";
-import { getSkillsIntel, getAvailableSkills, getSkillGap, getJobRoles, getJobRoleSkills } from "../../services/market";
+import { TrendingUp, TrendingDown, Radar as RadarIcon, Sparkles, X, Search, Plus, Briefcase, Activity, MapPin, ChevronDown } from "lucide-react";
+import { getSkillsIntel, getAvailableSkills, getSkillGap, getJobRoles, getJobRoleSkills, getSkillTrend, getCities } from "../../services/market";
 
 const container = {
   initial: { opacity: 0 },
@@ -40,6 +45,20 @@ function GlassTooltip({ active, payload, label }) {
   );
 }
 
+function TrendTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="oasis-tooltip">
+      <p className="font-brand text-xs mb-1" style={{ color: "#dad7cd" }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="font-data text-xs" style={{ color: p.color }}>
+          {p.name}: <span className="font-semibold">{p.value.toLocaleString("en-IN")} jobs</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 const SkillsIntel = ({ filters }) => {
   const [payload, setPayload] = useState({ rising: [], declining: [], radar: [] });
 
@@ -62,6 +81,20 @@ const SkillsIntel = ({ filters }) => {
   const roleInputRef = useRef(null);
   const roleSuggestionsRef = useRef(null);
 
+  // ── Skill Trend state ──
+  const [trendSkill, setTrendSkill] = useState("");
+  const [trendCity, setTrendCity] = useState("all-india");
+  const [trendData, setTrendData] = useState([]);
+  const [trendLabel, setTrendLabel] = useState("");
+  const [loadingTrend, setLoadingTrend] = useState(false);
+  const [showTrendSkills, setShowTrendSkills] = useState(false);
+  const [cityList, setCityList] = useState([]);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const trendInputRef = useRef(null);
+  const trendSugRef = useRef(null);
+  const cityDropdownRef = useRef(null);
+  const cityBtnRef = useRef(null);
+
   useEffect(() => {
     let mounted = true;
     getSkillsIntel({ city: filters?.city || "all-india", timeframe: filters?.timeframe || "1yr" })
@@ -74,6 +107,11 @@ const SkillsIntel = ({ filters }) => {
     getAvailableSkills()
       .then((res) => {
         if (mounted) setAllSkills(res?.skills || []);
+      })
+      .catch(() => {});
+    getCities()
+      .then((res) => {
+        if (mounted) setCityList(Array.isArray(res) ? res : []);
       })
       .catch(() => {});
     return () => {
@@ -90,10 +128,41 @@ const SkillsIntel = ({ filters }) => {
       if (roleSuggestionsRef.current && !roleSuggestionsRef.current.contains(e.target) && !roleInputRef.current?.contains(e.target)) {
         setShowRoleSuggestions(false);
       }
+      if (trendSugRef.current && !trendSugRef.current.contains(e.target) && !trendInputRef.current?.contains(e.target)) {
+        setShowTrendSkills(false);
+      }
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(e.target) && !cityBtnRef.current?.contains(e.target)) {
+        setShowCityDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Skill trend helpers
+  const trendFilteredSkills = useMemo(() => {
+    if (!trendSkill.trim()) return allSkills.slice(0, 12);
+    const q = trendSkill.toLowerCase();
+    return allSkills.filter((s) => s.toLowerCase().includes(q)).slice(0, 12);
+  }, [trendSkill, allSkills]);
+
+  const handleTrendGenerate = async (skill, city) => {
+    const sk = skill || trendSkill.trim().toLowerCase();
+    const ct = city || trendCity;
+    if (!sk) return;
+    setTrendSkill(sk);
+    setShowTrendSkills(false);
+    setLoadingTrend(true);
+    try {
+      const res = await getSkillTrend({ skill: sk, city: ct });
+      setTrendData(res?.trend || []);
+      setTrendLabel(res?.skill || sk);
+    } catch {
+      setTrendData([]);
+    } finally {
+      setLoadingTrend(false);
+    }
+  };
 
   // Debounced job role search
   useEffect(() => {
@@ -384,6 +453,137 @@ const SkillsIntel = ({ filters }) => {
             </RadarChart>
           </ResponsiveContainer>
         </div>
+      </motion.div>
+
+      {/* ── Skill Demand Trend (full width) ── */}
+      <motion.div variants={card} className="oasis-dash-card rounded-2xl p-5 lg:col-span-2">
+        <div className="flex items-center gap-2 mb-4">
+          <Activity size={16} style={{ color: "#97A87A" }} />
+          <h3 className="font-brand text-sm" style={{ color: "#dad7cd", fontWeight: 600 }}>
+            Skill Demand Trend
+          </h3>
+        </div>
+        <p className="font-data text-xs mb-4" style={{ color: "#6B7265" }}>
+          Choose a skill and city to see how demand has changed month-over-month across the last year
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          {/* Skill selector */}
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "#6B7265" }} />
+            <input
+              ref={trendInputRef}
+              type="text"
+              value={trendSkill}
+              onChange={(e) => { setTrendSkill(e.target.value); setShowTrendSkills(true); }}
+              onFocus={() => setShowTrendSkills(true)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleTrendGenerate(); } }}
+              placeholder="Select a skill (e.g. python, react, aws)..."
+              className="w-full pl-8 pr-3 py-2.5 rounded-lg text-xs font-data outline-none"
+              style={{ background: "rgba(151,168,122,0.06)", border: "1px solid rgba(151,168,122,0.15)", color: "#dad7cd" }}
+            />
+            {showTrendSkills && trendFilteredSkills.length > 0 && (
+              <div ref={trendSugRef} className="absolute z-20 left-0 right-0 mt-1 rounded-lg py-1 max-h-48 overflow-y-auto" style={{ background: "#1a1f14", border: "1px solid rgba(151,168,122,0.2)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                {trendFilteredSkills.map((sk) => (
+                  <button key={sk} onClick={() => { setTrendSkill(sk); setShowTrendSkills(false); handleTrendGenerate(sk); }} className="w-full text-left px-3 py-1.5 text-xs font-data flex items-center gap-2 hover:bg-[rgba(151,168,122,0.1)] transition-colors" style={{ color: "#dad7cd" }}>
+                    <Plus size={12} style={{ color: "#97A87A" }} /> {sk}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* City selector (custom dark dropdown) */}
+          <div className="relative" style={{ minWidth: 180 }}>
+            <button
+              ref={cityBtnRef}
+              onClick={() => setShowCityDropdown((p) => !p)}
+              className="w-full flex items-center gap-2 pl-3 pr-8 py-2.5 rounded-lg text-xs font-data cursor-pointer text-left"
+              style={{ background: "rgba(151,168,122,0.06)", border: "1px solid rgba(151,168,122,0.15)", color: "#dad7cd" }}
+            >
+              <MapPin size={14} style={{ color: "#6B7265" }} />
+              {trendCity === "all-india" ? "All India" : cityList.find((c) => c.name.toLowerCase() === trendCity)?.name || trendCity}
+            </button>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#6B7265" }} />
+            {showCityDropdown && (
+              <div ref={cityDropdownRef} className="absolute z-30 left-0 right-0 mt-1 rounded-lg py-1 max-h-56 overflow-y-auto" style={{ background: "#1a1f14", border: "1px solid rgba(151,168,122,0.2)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                <button
+                  onClick={() => { setTrendCity("all-india"); setShowCityDropdown(false); if (trendSkill) handleTrendGenerate(null, "all-india"); }}
+                  className={`w-full text-left px-3 py-2 text-xs font-data transition-colors ${trendCity === "all-india" ? "" : "hover:bg-[rgba(151,168,122,0.1)]"}`}
+                  style={{ color: trendCity === "all-india" ? "#97A87A" : "#dad7cd", background: trendCity === "all-india" ? "rgba(151,168,122,0.15)" : "transparent" }}
+                >
+                  All India
+                </button>
+                {cityList.map((c) => {
+                  const val = c.name.toLowerCase();
+                  const active = trendCity === val;
+                  return (
+                    <button
+                      key={c.id || c.name}
+                      onClick={() => { setTrendCity(val); setShowCityDropdown(false); if (trendSkill) handleTrendGenerate(null, val); }}
+                      className={`w-full text-left px-3 py-2 text-xs font-data transition-colors ${active ? "" : "hover:bg-[rgba(151,168,122,0.1)]"}`}
+                      style={{ color: active ? "#97A87A" : "#dad7cd", background: active ? "rgba(151,168,122,0.15)" : "transparent" }}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Generate button */}
+          <button
+            onClick={() => handleTrendGenerate()}
+            disabled={!trendSkill.trim() || loadingTrend}
+            className="px-4 py-2.5 rounded-lg text-xs font-brand font-semibold transition-all whitespace-nowrap"
+            style={{
+              background: trendSkill.trim() ? "rgba(151,168,122,0.2)" : "rgba(151,168,122,0.05)",
+              color: trendSkill.trim() ? "#97A87A" : "#6B7265",
+              border: "1px solid rgba(151,168,122,0.2)",
+              cursor: trendSkill.trim() ? "pointer" : "not-allowed",
+            }}
+          >
+            {loadingTrend ? "Loading..." : "Show Trend"}
+          </button>
+        </div>
+
+        {/* Chart area */}
+        {trendData.length > 0 ? (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="font-brand text-xs px-2 py-1 rounded" style={{ background: "rgba(151,168,122,0.12)", color: "#97A87A" }}>
+                {trendLabel}
+              </span>
+              <span className="font-data text-[11px]" style={{ color: "#6B7265" }}>
+                {trendCity === "all-india" ? "All India" : trendCity.charAt(0).toUpperCase() + trendCity.slice(1)} — Last 12 Months
+              </span>
+            </div>
+            <div className="w-full" style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#97A87A" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#97A87A" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(151,168,122,0.1)" />
+                  <XAxis dataKey="month" tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={{ stroke: "rgba(151,168,122,0.15)" }} tickLine={false} interval={0} angle={-35} textAnchor="end" height={50} />
+                  <YAxis tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<TrendTooltip />} />
+                  <Area type="monotone" dataKey="demand" name="Demand" stroke="#97A87A" strokeWidth={2} fill="url(#trendGradient)" dot={{ r: 4, fill: "#97A87A", stroke: "#121412", strokeWidth: 2 }} activeDot={{ r: 6, fill: "#97A87A", stroke: "#121412", strokeWidth: 2 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center rounded-xl" style={{ height: 200, background: "rgba(151,168,122,0.03)", border: "1px dashed rgba(151,168,122,0.12)" }}>
+            <p className="font-data text-xs" style={{ color: "#6B7265" }}>
+              {loadingTrend ? "Fetching trend data..." : "Select a skill above to visualize its demand trend"}
+            </p>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

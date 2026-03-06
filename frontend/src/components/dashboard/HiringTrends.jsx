@@ -326,16 +326,21 @@ const HiringTrends = ({ filters }) => {
     };
   }, [filters?.city, filters?.timeframe]);
 
-  const dailyPostings = useMemo(() => {
+  const monthlyPostings = useMemo(() => {
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const grouped = new Map();
     for (const point of data.timeline || []) {
-      const month = point.month || "";
-      const prev = grouped.get(month) || 0;
-      grouped.set(month, prev + Number(point.count || 0));
+      const m = point.month || "";
+      const prev = grouped.get(m) || 0;
+      grouped.set(m, prev + Number(point.count || 0));
     }
     return Array.from(grouped.entries())
-      .map(([day, postings]) => ({ day, postings }))
-      .slice(-30);
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, postings]) => {
+        const [y, m] = key.split("-");
+        const label = `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
+        return { month: label, postings };
+      });
   }, [data.timeline]);
 
   const sectorData = useMemo(() => {
@@ -370,7 +375,7 @@ const HiringTrends = ({ filters }) => {
         <CardHeader icon={TrendingUp} title="Total Job Postings - Market Timeline" />
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dailyPostings} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+            <AreaChart data={monthlyPostings} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#97A87A" stopOpacity={0.35} />
@@ -378,7 +383,7 @@ const HiringTrends = ({ filters }) => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(151,168,122,0.1)" />
-              <XAxis dataKey="day" tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={{ stroke: "rgba(151,168,122,0.15)" }} tickLine={false} interval={4} />
+              <XAxis dataKey="month" tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={{ stroke: "rgba(151,168,122,0.15)" }} tickLine={false} interval={0} angle={-35} textAnchor="end" height={50} />
               <YAxis tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(1)}k`} />
               <Tooltip content={<GlassTooltip />} />
               <Area type="monotone" dataKey="postings" stroke="#97A87A" strokeWidth={2} fill="url(#areaGradient)" dot={false} activeDot={{ r: 4, fill: "#97A87A", stroke: "#121412", strokeWidth: 2 }} />
