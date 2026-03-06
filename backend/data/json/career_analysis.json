@@ -1,62 +1,48 @@
 {
   "profile": {
-    "normalized_job_title": "BPO Team Lead",
-    "city": "Banglore",
-    "experience_years": 5,
-    "skills": [
-      "data analysis",
-      "crm",
-      "analytics",
-      "ai operations"
-    ],
-    "tools": [
-      "CRM"
-    ],
+    "normalized_job_title": "Data Entry Operator",
+    "city": "Indore",
+    "experience_years": 2,
+    "skills": [],
+    "tools": [],
     "tasks": [
-      "team supervision",
-      "customer complaint resolution",
-      "agent training",
-      "coordinate escalations",
-      "support operations performance"
+      "manage daily data entry from multiple",
+      "coordinate with operations teams respond to"
     ],
-    "aspirations": [
-      "analytics",
-      "ai operations",
-      "data analysis workflows"
-    ],
-    "domain": "customer support"
+    "aspirations": [],
+    "domain": "analytics"
   },
   "analysis": {
-    "risk_score": 0.0,
-    "risk_level": "LOW",
+    "risk_score": 0.8198044212288258,
+    "risk_level": "HIGH",
     "features_used": [
-      20.4375,
       0.0,
-      0.34,
-      5
+      0.0008260101415689604,
+      0.3,
+      2
     ],
     "explainability": {
       "base_value": 0.35472886365392,
       "feature_contributions": {
-        "avg_trend": -0.35332116329713387,
-        "location_score": 1.094690567477515e-05,
-        "automation_risk": -0.0002885313846890333,
-        "experience_years": -0.0011301158777635575
+        "avg_trend": 0.45010342033076883,
+        "location_score": -8.740179663622167e-05,
+        "automation_risk": -0.0019025600312765154,
+        "experience_years": 0.016962099072051845
       }
     },
     "job_suggestions": {
       "best_current_city_role": {
         "role": "Sap Certified Consultant",
-        "city": "Banglore",
-        "recommendation_score": 0.5455,
+        "city": "Indore",
+        "recommendation_score": 0.5665,
         "confidence": 1.0,
         "missing_skills": [],
         "reasoning_summary": "High transition feasibility with good demand trend"
       },
       "best_overall_role": {
         "role": "Sap Certified Consultant",
-        "city": "Banglore",
-        "recommendation_score": 0.5455,
+        "city": "Indore",
+        "recommendation_score": 0.5665,
         "confidence": 1.0,
         "missing_skills": [],
         "reasoning_summary": "High transition feasibility with good demand trend"
@@ -64,8 +50,8 @@
       "next_step_roles": [
         {
           "role": "Sap Certified Consultant",
-          "city": "Banglore",
-          "recommendation_score": 0.5455,
+          "city": "Indore",
+          "recommendation_score": 0.5665,
           "confidence": 1.0,
           "missing_skills": [],
           "reasoning_summary": "High transition feasibility with good demand trend"
@@ -74,8 +60,8 @@
       "current_city_recommendations": [
         {
           "role": "Sap Certified Consultant",
-          "city": "Banglore",
-          "recommendation_score": 0.5455,
+          "city": "Indore",
+          "recommendation_score": 0.5665,
           "confidence": 1.0,
           "missing_skills": [],
           "reasoning_summary": "High transition feasibility with good demand trend"

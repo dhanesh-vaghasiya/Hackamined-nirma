@@ -28,13 +28,15 @@ def create_app():
     # Register blueprints
     from app.routes.auth import auth_bp
     from app.routes.career import career_bp
+    from app.routes.chatbot import chatbot_bp
     from app.routes.main import main_bp
-    from app.routes.user_input import user_input_bp
+    from app.routes.market import market_bp
 
     app.register_blueprint(main_bp, url_prefix="/api")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(user_input_bp, url_prefix="/api/user-input")
     app.register_blueprint(career_bp, url_prefix="/api/career")
+    app.register_blueprint(market_bp, url_prefix="/api/market")
+    app.register_blueprint(chatbot_bp, url_prefix="/api/chatbot")
 
     # Create database tables
     with app.app_context():

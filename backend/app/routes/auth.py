@@ -7,7 +7,6 @@ from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
-
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
@@ -32,7 +31,7 @@ def register():
 
     # Hash password and create user
     hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-    user = User(name=name, email=email, password=hashed.decode("utf-8"))
+    user = User(name=name, email=email, password_hash=hashed.decode("utf-8"))
 
     db.session.add(user)
     db.session.commit()
@@ -62,7 +61,7 @@ def login():
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Verify password
-    if not bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
+    if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate token

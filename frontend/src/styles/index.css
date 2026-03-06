@@ -1,146 +1,108 @@
-/* ===========================
-   CSS Variables & Theme
-   =========================== */
-:root,
-[data-theme="light"] {
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
-  --color-secondary: #ec4899;
-  --color-secondary-hover: #db2777;
+@import "tailwindcss";
 
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-bg-hover: #f1f5f9;
-
-  --color-text: #0f172a;
-  --color-text-secondary: #64748b;
+@theme {
+  /* ── Oasis Design System ─────────────────────────────────────────── */
+  --color-oasis-forest: #97A87A;
+  --color-oasis-forest-hover: #889B6B;
+  --color-oasis-minty: #dad7cd;
+  --color-oasis-deep: #121412;
+  --color-oasis-surface: #1A1E1A;
+  --color-oasis-card: rgba(218, 215, 205, 0.12);
+  --color-oasis-text: #1A1D1A;
+  --color-oasis-text-light: #FFFFFF;
+  --color-oasis-muted: #6B7265;
+  --color-oasis-border: rgba(151, 168, 122, 0.3);
+  --color-oasis-risk-critical: #DC2626;
+  --color-oasis-risk-warning: #D97706;
+  --color-oasis-risk-safe: #97A87A;
+  --color-oasis-glow: rgba(151, 168, 122, 0.15);
 }
 
-[data-theme="dark"] {
-  --color-primary: #818cf8;
-  --color-primary-hover: #6366f1;
-  --color-secondary: #f472b6;
-  --color-secondary-hover: #ec4899;
-
-  --color-bg: #0f172a;
-  --color-surface: #1e293b;
-  --color-border: #334155;
-  --color-bg-hover: #1e293b;
-
-  --color-text: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-}
-
-/* ===========================
-   Reset & Base
-   =========================== */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #121412; }
+::-webkit-scrollbar-thumb { background: #2A2E2A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3E3A; }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: "Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #121412;
 }
 
-/* ===========================
-   Layout
-   =========================== */
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+/* ── Glass card base ───────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(218, 215, 205, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(151, 168, 122, 0.2);
+  border-radius: 16px;
+  transition: all 0.3s ease;
 }
 
-.main-content {
-  flex: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+.glass-card:hover {
+  border-color: rgba(151, 168, 122, 0.45);
+  box-shadow: 0 0 20px rgba(151, 168, 122, 0.08);
+  transform: translateY(-2px);
 }
 
-/* ===========================
-   Page wrapper
-   =========================== */
-.page {
-  padding: 2rem 0;
+/* ── Glass card solid (for auth pages) ─────────────────────────────── */
+.glass-card-solid {
+  background: rgba(218, 215, 205, 0.80);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(151, 168, 122, 0.3);
+  border-radius: 16px;
 }
 
-.page h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+/* ── Dashboard chart card ───────────────────────────────────────────── */
+.oasis-dash-card {
+  background: rgba(26, 29, 26, 0.60);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(151, 168, 122, 0.20);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* ===========================
-   Utilities
-   =========================== */
-.text-center {
-  text-align: center;
+.oasis-dash-card:hover {
+  border-color: rgba(151, 168, 122, 0.40);
+  box-shadow: 0 0 24px rgba(151, 168, 122, 0.06);
 }
 
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.mt-3 { margin-top: 1.5rem; }
-.mt-4 { margin-top: 2rem; }
-
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.mb-3 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 2rem; }
-
-/* ===========================
-   Links
-   =========================== */
-a {
-  color: var(--color-primary);
-  text-decoration: none;
+/* ── Recharts tooltip ──────────────────────────────────────────────── */
+.oasis-tooltip {
+  background: rgba(26, 29, 26, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(151, 168, 122, 0.25);
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 
-a:hover {
-  text-decoration: underline;
+/* ── Custom thin scrollbar for tables ──────────────────────────────── */
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(151,168,122,0.25); border-radius: 2px; }
+
+/* ── Worker portal select dropdown ─────────────────────────────────── */
+.worker-select option {
+  background: #1A1D1A;
+  color: #dad7cd;
 }
 
-/* ===========================
-   Loading screen
-   =========================== */
-.loading-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  font-size: 1.1rem;
-  color: var(--color-text-secondary);
+/* Number input spinner removal */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
-/* ===========================
-   Scrollbar (optional)
-   =========================== */
-::-webkit-scrollbar {
-  width: 8px;
+/* ── Heading font ──────────────────────────────────────────────────── */
+.font-brand {
+  font-family: "Space Grotesk", sans-serif;
 }
-::-webkit-scrollbar-track {
-  background: var(--color-bg);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+
+.font-data {
+  font-family: "Inter", "Plus Jakarta Sans", sans-serif;
 }
