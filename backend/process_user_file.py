@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from app.services.user_input.services.profile_builder import build_profile
@@ -6,8 +7,12 @@ from app.services.user_input.services.profile_builder import build_profile
 
 def main() -> None:
     base_dir = Path(__file__).resolve().parent
-    input_path = base_dir / "user_input.json"
-    output_path = base_dir / "processed_output.json"
+    default_json_dir = base_dir / "data" / "json"
+    json_dir = Path(os.getenv("HACKMIND_JSON_DIR", default_json_dir))
+    json_dir.mkdir(parents=True, exist_ok=True)
+
+    input_path = json_dir / "user_input.json"
+    output_path = json_dir / "processed_output.json"
 
     if not input_path.exists():
         raise FileNotFoundError(

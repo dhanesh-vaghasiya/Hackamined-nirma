@@ -1,0 +1,103 @@
+{
+  "profile": {
+    "normalized_job_title": "BPO Team Lead",
+    "city": "Banglore",
+    "experience_years": 5,
+    "skills": [
+      "data analysis",
+      "crm",
+      "analytics",
+      "ai operations"
+    ],
+    "tools": [
+      "CRM"
+    ],
+    "tasks": [
+      "team supervision",
+      "customer complaint resolution",
+      "agent training",
+      "coordinate escalations",
+      "support operations performance"
+    ],
+    "aspirations": [
+      "analytics",
+      "ai operations",
+      "data analysis workflows"
+    ],
+    "domain": "customer support"
+  },
+  "analysis": {
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "features_used": [
+      20.4375,
+      0.0,
+      0.34,
+      5
+    ],
+    "explainability": {
+      "base_value": 0.35472886365392,
+      "feature_contributions": {
+        "avg_trend": -0.35332116329713387,
+        "location_score": 1.094690567477515e-05,
+        "automation_risk": -0.0002885313846890333,
+        "experience_years": -0.0011301158777635575
+      }
+    },
+    "job_suggestions": {
+      "best_current_city_role": {
+        "role": "Sap Certified Consultant",
+        "city": "Banglore",
+        "recommendation_score": 0.5455,
+        "confidence": 1.0,
+        "missing_skills": [],
+        "reasoning_summary": "High transition feasibility with good demand trend"
+      },
+      "best_overall_role": {
+        "role": "Sap Certified Consultant",
+        "city": "Banglore",
+        "recommendation_score": 0.5455,
+        "confidence": 1.0,
+        "missing_skills": [],
+        "reasoning_summary": "High transition feasibility with good demand trend"
+      },
+      "next_step_roles": [
+        {
+          "role": "Sap Certified Consultant",
+          "city": "Banglore",
+          "recommendation_score": 0.5455,
+          "confidence": 1.0,
+          "missing_skills": [],
+          "reasoning_summary": "High transition feasibility with good demand trend"
+        }
+      ],
+      "current_city_recommendations": [
+        {
+          "role": "Sap Certified Consultant",
+          "city": "Banglore",
+          "recommendation_score": 0.5455,
+          "confidence": 1.0,
+          "missing_skills": [],
+          "reasoning_summary": "High transition feasibility with good demand trend"
+        }
+      ],
+      "fallback_city_recommendations": [],
+      "model_info": {
+        "feature_columns": [
+          "semantic_similarity",
+          "skill_overlap_ratio",
+          "skill_gap_count",
+          "candidate_demand_score",
+          "candidate_latest_demand_score",
+          "candidate_trend",
+          "demand_lift_vs_current",
+          "trend_lift_vs_current",
+          "city_switch"
+        ],
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "transition_model": "lightgbm.LGBMClassifier",
+        "rank_model": "lightgbm.LGBMRegressor"
+      }
+    }
+  }
+}
