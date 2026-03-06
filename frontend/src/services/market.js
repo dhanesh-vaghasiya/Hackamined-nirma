@@ -1,5 +1,14 @@
 import api from "./api";
 
+export const triggerScrape = async ({ keywords, location, max_rows } = {}) => {
+  const body = {};
+  if (keywords) body.keywords = keywords;
+  if (location) body.location = location;
+  if (max_rows) body.max_rows = max_rows;
+  const { data } = await api.post("/scraper/scrape-and-update", body, { timeout: 300000 });
+  return data;
+};
+
 export const getMarketSummary = async () => {
   const { data } = await api.get("/market/summary");
   return data;

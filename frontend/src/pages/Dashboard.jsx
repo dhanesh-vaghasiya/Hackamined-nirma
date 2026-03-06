@@ -40,12 +40,12 @@ const TIME_OPTIONS = [
 ];
 
 /* ── tab renderer ──────────────────────────────────────────────────── */
-function renderTab(name, filters) {
+function renderTab(name, filters, onScrapeComplete) {
   switch (name) {
     case "Hiring Trends":    return <HiringTrends filters={filters} />;
     case "Skills Intel":     return <SkillsIntel filters={filters} />;
     case "AI Vulnerability": return <AiVulnerability filters={filters} />;
-    case "Data Records":     return <MarketRecords filters={filters} />;
+    case "Data Records":     return <MarketRecords filters={filters} onScrapeComplete={onScrapeComplete} />;
     default:                 return null;
   }
 }
@@ -58,10 +58,14 @@ const Dashboard = ({ activeLayer }) => {
   const [summary, setSummary] = useState({ rows: 0, unique_roles: 0, unique_cities: 0, vulnerability_roles: 0 });
   const [profileId, setProfileId] = useState(null);
 
-  useEffect(() => {
+  const refreshSummary = () => {
     getMarketSummary()
       .then((res) => setSummary(res || { rows: 0, unique_roles: 0, unique_cities: 0, vulnerability_roles: 0 }))
-      .catch(() => setSummary({ rows: 0, unique_roles: 0, unique_cities: 0, vulnerability_roles: 0 }));
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshSummary();
   }, []);
 
   /* ── Worker Portal layer ── */
@@ -189,7 +193,7 @@ const Dashboard = ({ activeLayer }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {renderTab(activeTab, { city, timeframe })}
+        {renderTab(activeTab, { city, timeframe }, refreshSummary)}
       </motion.div>
     </div>
   );
