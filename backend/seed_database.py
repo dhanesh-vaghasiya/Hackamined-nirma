@@ -209,7 +209,7 @@ def seed():
                 db.session.flush()
                 print(f"  ... {count} jobs processed")
 
-            if count >= 150000:  # Limit to keep DB manageable
+            if count >= 150000:  
                 break
 
         db.session.commit()

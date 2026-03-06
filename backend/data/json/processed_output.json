@@ -1,27 +1,14 @@
 {
-  "normalized_job_title": "BPO Team Lead",
-  "city": "Banglore",
+  "normalized_job_title": "Software Developer",
+  "city": "Mumbai",
   "experience_years": 5,
   "skills": [
-    "data analysis",
-    "crm",
-    "analytics",
-    "ai operations"
+    "sql"
   ],
-  "tools": [
-    "CRM"
-  ],
+  "tools": [],
   "tasks": [
-    "team supervision",
-    "customer complaint resolution",
-    "agent training",
-    "coordinate escalations",
-    "support operations performance"
+    "handle database operations with postgresql"
   ],
-  "aspirations": [
-    "analytics",
-    "ai operations",
-    "data analysis workflows"
-  ],
-  "domain": "customer support"
+  "aspirations": [],
+  "domain": "analytics"
 }
