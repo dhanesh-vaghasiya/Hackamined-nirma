@@ -39,6 +39,10 @@ def _parse_posted_date(raw_text: str) -> str:
     if match:
         return (today - timedelta(days=int(match.group(1)))).strftime("%Y-%m-%d")
 
+    match = re.search(r"(\d+)\s*week", raw)
+    if match:
+        return (today - timedelta(weeks=int(match.group(1)))).strftime("%Y-%m-%d")
+
     match = re.search(r"(\d+)\s*month", raw)
     if match:
         return (today - timedelta(days=int(match.group(1)) * 30)).strftime("%Y-%m-%d")
@@ -229,8 +233,13 @@ def run_scrape(
     finally:
         driver.quit()
 
-    # Store in the in-memory store (will be swapped for real DB later)
+    # Store in the in-memory store (backward compat)
     run_summary = save_jobs(all_jobs, keyword=keyword_label)
+
+    # Normalize & persist to SQL database
+    from app.services.scraper.normalizer import normalize_and_store
+    db_summary = normalize_and_store(all_jobs)
+    run_summary["db_summary"] = db_summary
     run_summary["jobs"] = all_jobs
 
     return run_summary

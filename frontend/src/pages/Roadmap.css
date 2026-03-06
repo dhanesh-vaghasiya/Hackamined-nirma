@@ -1,0 +1,337 @@
+.roadmap-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.roadmap-page h1 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Input Form ────────────────────────────────────────── */
+.roadmap-form {
+  background: var(--color-bg-secondary, #f8f9fa);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.roadmap-form h2 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: var(--color-text-secondary, #555);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #333);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.generate-btn {
+  margin-top: 1rem;
+  padding: 0.7rem 2rem;
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark, #4f46e5);
+}
+
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Pipeline Sections ─────────────────────────────────── */
+.pipeline-section {
+  background: var(--color-bg-secondary, #f8f9fa);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.pipeline-section h2 {
+  font-size: 1.15rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pipeline-section h2 .step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary, #6366f1);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Data Retrieved ──────────────────────────────────── */
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.data-card {
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.data-card h4 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary, #6366f1);
+}
+
+.data-card pre {
+  font-size: 0.78rem;
+  background: var(--color-bg-secondary, #f1f3f5);
+  padding: 0.5rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ── Skill Recommendation ────────────────────────────── */
+.skill-recommendation {
+  background: var(--color-bg, #fff);
+  border: 2px solid var(--color-primary, #6366f1);
+  border-radius: 10px;
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.skill-recommendation .skill-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary, #6366f1);
+  margin-bottom: 0.5rem;
+}
+
+.skill-recommendation .reasoning {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #555);
+  line-height: 1.5;
+}
+
+/* ── Roadmap Stages ──────────────────────────────────── */
+.stages-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.stages-timeline::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-primary, #6366f1);
+  border-radius: 2px;
+}
+
+.stage-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 10px;
+  padding: 1.2rem;
+}
+
+.stage-item::before {
+  content: "";
+  position: absolute;
+  left: -24px;
+  top: 1.4rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-primary, #6366f1);
+  border: 3px solid var(--color-bg, #fff);
+}
+
+.stage-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.stage-item .stage-duration {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #888);
+  margin-bottom: 0.5rem;
+}
+
+.stage-item .stage-desc {
+  font-size: 0.9rem;
+  margin-bottom: 0.7rem;
+  line-height: 1.4;
+}
+
+.stage-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.stage-topics .topic-tag {
+  background: var(--color-primary-light, #eef2ff);
+  color: var(--color-primary, #6366f1);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* ── Course Cards ────────────────────────────────────── */
+.course-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.course-card {
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 10px;
+  padding: 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.course-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.course-card h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem;
+}
+
+.course-card .course-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #888);
+  margin-bottom: 0.5rem;
+}
+
+.course-card a {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--color-primary, #6366f1);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.course-card a:hover {
+  text-decoration: underline;
+}
+
+/* ── Raw output ──────────────────────────────────────── */
+.raw-output {
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.raw-output pre {
+  font-size: 0.78rem;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Loading ─────────────────────────────────────────── */
+.loading-overlay {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.loading-overlay .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border, #dee2e6);
+  border-top-color: var(--color-primary, #6366f1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  color: var(--color-text-secondary, #888);
+  font-size: 0.95rem;
+}
+
+/* ── Error ───────────────────────────────────────────── */
+.error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .course-list {
+    grid-template-columns: 1fr;
+  }
+}

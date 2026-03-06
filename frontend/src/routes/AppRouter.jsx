@@ -5,6 +5,7 @@ import About from "../pages/About";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
+import Roadmap from "../pages/Roadmap";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -17,6 +18,7 @@ const AppRouter = () => {
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/roadmap" element={<Roadmap />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
