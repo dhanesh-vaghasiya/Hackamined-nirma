@@ -1,35 +1,65 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Database, Search } from "lucide-react";
-import { getMarketRecords } from "../../services/market";
+import { Database, Search, RefreshCw, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { getMarketRecords, triggerScrape } from "../../services/market";
 
-const MarketRecords = ({ filters }) => {
+const MarketRecords = ({ filters, onScrapeComplete }) => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [payload, setPayload] = useState({ items: [], total: 0, total_pages: 1, meta: { unique_roles: 0, unique_cities: 0 } });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  // Scrape state
+  const [scraping, setScraping] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState(null); // {success, message, data}
+
+  const fetchRecords = useCallback(() => {
     setLoading(true);
     getMarketRecords({ page, pageSize: 100, city: filters?.city, q: query.trim() })
       .then((res) => {
-        if (mounted) setPayload(res || { items: [], total: 0, total_pages: 1, meta: { unique_roles: 0, unique_cities: 0 } });
+        setPayload(res || { items: [], total: 0, total_pages: 1, meta: { unique_roles: 0, unique_cities: 0 } });
       })
       .catch(() => {
-        if (mounted) setPayload({ items: [], total: 0, total_pages: 1, meta: { unique_roles: 0, unique_cities: 0 } });
+        setPayload({ items: [], total: 0, total_pages: 1, meta: { unique_roles: 0, unique_cities: 0 } });
       })
       .finally(() => {
-        if (mounted) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      mounted = false;
-    };
-  }, [page, filters?.city, filters?.timeframe, query]);
+  }, [page, filters?.city, query]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   useEffect(() => {
     setPage(1);
   }, [filters?.city, filters?.timeframe]);
+
+  const handleScrape = async () => {
+    setScraping(true);
+    setScrapeResult(null);
+    try {
+      const res = await triggerScrape();
+      setScrapeResult({
+        success: true,
+        message: res?.message || "Scrape complete",
+        data: res?.data || res,
+      });
+      // Refresh records + parent summary
+      setPage(1);
+      fetchRecords();
+      if (onScrapeComplete) onScrapeComplete();
+    } catch (err) {
+      setScrapeResult({
+        success: false,
+        message: err?.response?.data?.error || err?.message || "Scrape failed",
+      });
+    } finally {
+      setScraping(false);
+      // Auto-clear result after 10s
+      setTimeout(() => setScrapeResult(null), 10000);
+    }
+  };
 
   const rows = useMemo(() => payload.items || [], [payload.items]);
 
@@ -44,7 +74,56 @@ const MarketRecords = ({ filters }) => {
           <span className="ml-auto font-data text-[11px] px-2 py-0.5 rounded-full" style={{ color: "#6B7265", background: "rgba(218,215,205,0.08)" }}>
             {payload.total.toLocaleString("en-IN")} rows
           </span>
+          <button
+            onClick={handleScrape}
+            disabled={scraping}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-brand text-xs transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              color: scraping ? "#6B7265" : "#121412",
+              background: scraping ? "rgba(151,168,122,0.15)" : "#97A87A",
+              fontWeight: 600,
+            }}
+          >
+            {scraping ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <RefreshCw size={13} />
+            )}
+            {scraping ? "Scraping…" : "Scrape Now"}
+          </button>
         </div>
+
+        {/* Scrape result banner */}
+        {scrapeResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-start gap-2 rounded-lg px-3 py-2.5 mb-4"
+            style={{
+              background: scrapeResult.success
+                ? "rgba(151,168,122,0.12)"
+                : "rgba(217,119,6,0.12)",
+              border: `1px solid ${scrapeResult.success ? "rgba(151,168,122,0.3)" : "rgba(217,119,6,0.3)"}`,
+            }}
+          >
+            {scrapeResult.success ? (
+              <CheckCircle2 size={15} style={{ color: "#97A87A", marginTop: 1, flexShrink: 0 }} />
+            ) : (
+              <AlertCircle size={15} style={{ color: "#D97706", marginTop: 1, flexShrink: 0 }} />
+            )}
+            <div className="flex-1">
+              <p className="font-data text-xs" style={{ color: "#dad7cd" }}>
+                {scrapeResult.message}
+              </p>
+              {scrapeResult.success && scrapeResult.data && (
+                <p className="font-data text-[11px] mt-0.5" style={{ color: "#6B7265" }}>
+                  {scrapeResult.data.jobs_scraped ?? 0} scraped · {scrapeResult.data.jobs_stored ?? 0} stored · {scrapeResult.data.skill_trends_upserted ?? 0} skill trends · {scrapeResult.data.vuln_scores_upserted ?? 0} vuln scores
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div className="md:col-span-2 relative">
