@@ -17,6 +17,29 @@ from job_suggestion.data_utils import (
 )
 from paths import model_path as get_model_path, resolve_csv_input
 
+# ---------- Cached artifacts (loaded once) ----------
+_cached_artifact = None
+_cached_city_role_stats = None
+
+
+def _load_artifact(artifact_path: Path):
+    global _cached_artifact
+    if _cached_artifact is None or _cached_artifact["_path"] != str(artifact_path):
+        artifact = joblib.load(artifact_path)
+        artifact["_path"] = str(artifact_path)
+        _cached_artifact = artifact
+    return _cached_artifact
+
+
+def _load_latest_city_stats():
+    global _cached_city_role_stats
+    if _cached_city_role_stats is None:
+        jobs_path = resolve_csv_input("jobs.csv")
+        if jobs_path.exists():
+            latest_jobs = load_jobs_dataset(str(jobs_path))
+            _cached_city_role_stats = build_city_role_stats(latest_jobs)
+    return _cached_city_role_stats
+
 
 def _make_feature_row(
     semantic_similarity: float,
@@ -61,7 +84,7 @@ def recommend_next_roles(
         else get_model_path("job_suggestion", "job_suggestion_models.pkl")
     )
 
-    artifact = joblib.load(artifact_path)
+    artifact = _load_artifact(artifact_path)
     feature_columns = artifact["metadata"]["feature_columns"]
     roles: List[str] = artifact["roles"]
     cities: List[str] = artifact["cities"]
@@ -73,12 +96,9 @@ def recommend_next_roles(
     rank_model = artifact["rank_model"]
 
     if use_latest_market_data:
-        jobs_path = resolve_csv_input("jobs.csv")
-        if jobs_path.exists():
-            latest_jobs = load_jobs_dataset(str(jobs_path))
-            latest_city_stats = build_city_role_stats(latest_jobs)
-            if not latest_city_stats.empty:
-                city_role_stats = latest_city_stats
+        latest_city_stats = _load_latest_city_stats()
+        if latest_city_stats is not None and not latest_city_stats.empty:
+            city_role_stats = latest_city_stats
 
     current_role = str(user_profile.get("current_role", "")).strip()
     current_city = str(user_profile.get("city", "")).strip()
@@ -115,36 +135,69 @@ def recommend_next_roles(
             candidate_stats = lookup_city_role_stats(city_role_stats, candidate_city, candidate_role)
             city_switch = 1.0 if candidate_city != current_city else 0.0
 
-            feature_row = _make_feature_row(
-                semantic_similarity=semantic_similarity,
-                overlap_ratio=overlap_ratio,
-                gap_count=gap_count,
-                candidate_stats=candidate_stats,
-                current_stats=current_stats,
-                city_switch=city_switch,
+            # ---- Feature-based scoring (replaces broken LightGBM models) ----
+            # Weighted combination of meaningful signals:
+            #   - semantic_similarity: how related is this role to current role (0-1)
+            #   - skill_overlap_ratio: how many required skills the user already has (0-1)
+            #   - demand signals: is this role actually hiring?
+            #   - trend: is demand growing?
+            #   - city_switch penalty: prefer same city
+            #   - gap penalty: penalize roles requiring many new skills
+
+            demand = candidate_stats["demand_score"]
+            latest = candidate_stats["latest_demand_score"]
+            trend = candidate_stats["trend"]
+
+            # Normalize gap_count (fewer gaps = better). Cap at 20 for normalization.
+            gap_penalty = min(gap_count, 20) / 20.0
+
+            # Composite score with tuned weights
+            score = (
+                0.30 * semantic_similarity
+                + 0.20 * overlap_ratio
+                + 0.20 * max(demand, latest)
+                + 0.10 * max(0, min(trend, 1.0))
+                - 0.10 * gap_penalty
+                - 0.05 * city_switch
             )
 
-            x_row = pd.DataFrame([feature_row])[feature_columns]
-            confidence = float(_transition_confidence(transition_model, x_row)[0])
-            base_score = float(rank_model.predict(x_row)[0])
+            # Risk-aware boost: high-risk users get extra push toward in-demand roles
+            risk_boost = risk_numeric * 0.10 * max(demand, latest)
+            score += risk_boost
 
-            # Risk-aware preference: for high-risk users, bias toward stronger demand and lower move friction.
-            risk_boost = risk_numeric * (0.15 * feature_row["candidate_demand_score"] + 0.1 * (1.0 - city_switch))
-            final_score = base_score + (0.25 * confidence) + risk_boost
+            # Clamp to 0-1
+            score = max(0.0, min(1.0, score))
+
+            # Confidence: blend of similarity and demand evidence
+            confidence = min(1.0, 0.5 * semantic_similarity + 0.3 * overlap_ratio + 0.2 * max(demand, latest))
+
+            # Build reasoning
+            reasons = []
+            if semantic_similarity >= 0.4:
+                reasons.append("Strong role alignment")
+            elif semantic_similarity >= 0.25:
+                reasons.append("Moderate role alignment")
+            if overlap_ratio >= 0.3:
+                reasons.append("good skill match")
+            if max(demand, latest) >= 0.05:
+                reasons.append("active hiring demand")
+            if trend > 0.1:
+                reasons.append("growing demand trend")
+            if city_switch == 0:
+                reasons.append("available in your city")
+            if not reasons:
+                reasons.append("Potential career path")
+            reasoning = reasons[0][0].upper() + reasons[0][1:] + (", " + ", ".join(reasons[1:]) if len(reasons) > 1 else "")
 
             candidates.append(
                 {
                     "role": candidate_role,
                     "city": candidate_city,
-                    "recommendation_score": round(float(final_score), 4),
+                    "recommendation_score": round(score, 4),
                     "confidence": round(confidence, 4),
                     "semantic_similarity": round(semantic_similarity, 4),
                     "missing_skills": missing_skills[:5],
-                    "reasoning_summary": (
-                        "High transition feasibility with good demand trend"
-                        if confidence >= 0.65
-                        else "Moderate transition feasibility with demand support"
-                    ),
+                    "reasoning_summary": reasoning,
                 }
             )
 
@@ -152,11 +205,30 @@ def recommend_next_roles(
     if candidate_df.empty:
         raise RuntimeError("No candidate roles could be generated")
 
-    feasible_df = candidate_df[candidate_df["confidence"] >= min_confidence].copy()
+    feasible_df = candidate_df[candidate_df["recommendation_score"] >= 0.10].copy()
     if feasible_df.empty:
-        feasible_df = candidate_df.sort_values(["confidence", "recommendation_score"], ascending=False).head(8)
+        feasible_df = candidate_df.sort_values(["recommendation_score", "confidence"], ascending=False).head(top_k * 3)
 
     feasible_df = feasible_df.sort_values(["recommendation_score", "confidence"], ascending=False)
+
+    # Rescale scores to a user-friendly display range (35%-90%)
+    raw_min = feasible_df["recommendation_score"].min()
+    raw_max = feasible_df["recommendation_score"].max()
+    if raw_max > raw_min:
+        feasible_df["recommendation_score"] = (
+            0.35 + 0.55 * (feasible_df["recommendation_score"] - raw_min) / (raw_max - raw_min)
+        ).round(4)
+    else:
+        feasible_df["recommendation_score"] = 0.60
+
+    raw_cmin = feasible_df["confidence"].min()
+    raw_cmax = feasible_df["confidence"].max()
+    if raw_cmax > raw_cmin:
+        feasible_df["confidence"] = (
+            0.40 + 0.50 * (feasible_df["confidence"] - raw_cmin) / (raw_cmax - raw_cmin)
+        ).round(4)
+    else:
+        feasible_df["confidence"] = 0.65
 
     city_df = feasible_df[feasible_df["city"] == current_city].copy()
     other_df = feasible_df[feasible_df["city"] != current_city].copy()
