@@ -12,3 +12,13 @@ export const generateRoadmap = async (profileId, chosenRole) => {
   });
   return data;
 };
+
+export const fetchDetailedRoadmap = async (role) => {
+  const { data } = await api.post("/career/detailed-roadmap", { role });
+  return data;
+};
+
+export const fetchTopicGraph = async (role, topic) => {
+  const { data } = await api.post("/career/topic-graph", { role, topic });
+  return data;
+};
