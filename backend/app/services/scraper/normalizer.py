@@ -15,6 +15,13 @@ from app import db
 from app.models import City, Job
 
 
+def _normalize_title(title: str) -> str:
+    """Lowercase, strip non-alphanum, collapse whitespace."""
+    t = title.strip().lower()
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
 # ── date normalization ─────────────────────────────────────
 
 def normalize_date(raw: str, reference_date: date | None = None) -> date | None:
@@ -136,6 +143,7 @@ def normalize_and_store(
     jobs_created = 0
     cities_created_count = 0
     rows_skipped = 0
+    created_job_ids: list[int] = []
     existing_cities_before = {c.name.lower() for c in City.query.all()}
 
     for raw in raw_jobs:
@@ -151,14 +159,21 @@ def normalize_and_store(
         posted_date = normalize_date(date_raw, ref)
         cities = split_cities(location_raw)
 
+        title_norm = _normalize_title(title)
+
         if not cities:
             job = Job(
                 title=title,
+                title_norm=title_norm or None,
                 city_id=None,
+                location_raw=location_raw or None,
                 description=description,
                 posted_date=posted_date,
+                source="naukri",
             )
             db.session.add(job)
+            db.session.flush()  # populate job.id
+            created_job_ids.append(job.id)
             jobs_created += 1
             continue
 
@@ -170,11 +185,16 @@ def normalize_and_store(
 
             job = Job(
                 title=title,
+                title_norm=title_norm or None,
                 city_id=city.id,
+                location_raw=location_raw or None,
                 description=description,
                 posted_date=posted_date,
+                source="naukri",
             )
             db.session.add(job)
+            db.session.flush()
+            created_job_ids.append(job.id)
             jobs_created += 1
 
     db.session.commit()
@@ -183,6 +203,7 @@ def normalize_and_store(
         "jobs_created": jobs_created,
         "cities_created": cities_created_count,
         "rows_skipped": rows_skipped,
+        "job_ids": created_job_ids,
         "raw_rows_processed": len(raw_jobs),
     }
 

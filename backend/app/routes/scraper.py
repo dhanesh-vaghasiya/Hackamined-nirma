@@ -15,6 +15,7 @@ Endpoints:
 from flask import Blueprint, jsonify, request
 
 from app.services.scraper.scraper_service import run_scrape
+from app.services.scraper.intelligence import update_skill_trends, update_ai_vulnerability
 from app.services.scraper.store import (
     delete_all_jobs,
     get_all_jobs,
@@ -77,6 +78,80 @@ def scrape():
         )
     except Exception as exc:
         return error_response(f"Scrape failed: {exc}", 500)
+
+
+# ── Unified: scrape + normalize + update intelligence ─────
+
+@scraper_bp.route("/scrape-and-update", methods=["POST"])
+def scrape_and_update():
+    """
+    Full pipeline: scrape Naukri → store in DB → update skill trends
+    → update AI vulnerability scores.
+
+    Optional JSON body (same as /scrape):
+        {
+            "keywords": ["developer", "analyst"],
+            "location": "Mumbai",
+            "max_rows": 50
+        }
+    """
+    data = request.get_json(silent=True) or {}
+
+    keywords = data.get("keywords")
+    location = data.get("location")
+    max_rows = data.get("max_rows")
+
+    if keywords is not None:
+        if not isinstance(keywords, list) or not all(isinstance(k, str) for k in keywords):
+            return error_response("'keywords' must be a list of strings", 400)
+
+    if max_rows is not None:
+        try:
+            max_rows = int(max_rows)
+            if max_rows < 1:
+                raise ValueError
+        except (TypeError, ValueError):
+            return error_response("'max_rows' must be a positive integer", 400)
+
+    try:
+        # Step 1: Scrape + normalize (run_scrape already calls normalize_and_store)
+        result = run_scrape(
+            keywords=keywords,
+            location=location,
+            max_rows=max_rows,
+        )
+        db_summary = result.get("db_summary", {})
+        new_job_ids = db_summary.get("job_ids", [])
+
+        # Step 2: Update skill trends for new jobs
+        skill_result = {}
+        if new_job_ids:
+            skill_result = update_skill_trends(job_ids=new_job_ids)
+
+        # Step 3: Update AI vulnerability scores for new jobs
+        vuln_result = {}
+        if new_job_ids:
+            vuln_result = update_ai_vulnerability(job_ids=new_job_ids)
+
+        return success_response(
+            data={
+                "run_id": result["run_id"],
+                "jobs_scraped": result["jobs_added"],
+                "jobs_stored": db_summary.get("jobs_created", 0),
+                "cities_created": db_summary.get("cities_created", 0),
+                "skill_trends_upserted": skill_result.get("skill_trends_upserted", 0),
+                "vuln_scores_upserted": vuln_result.get("vuln_scores_upserted", 0),
+                "sample_jobs": result["jobs"][:5],
+            },
+            message=(
+                f"Pipeline complete – {result['jobs_added']} scraped, "
+                f"{db_summary.get('jobs_created', 0)} stored, "
+                f"{skill_result.get('skill_trends_upserted', 0)} skill trends updated, "
+                f"{vuln_result.get('vuln_scores_upserted', 0)} vuln scores updated"
+            ),
+        )
+    except Exception as exc:
+        return error_response(f"Scrape pipeline failed: {exc}", 500)
 
 
 # ── List / search jobs ────────────────────────────────────

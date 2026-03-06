@@ -13,10 +13,10 @@ SEARCH_KEYWORDS = [
 LOCATION = ""
 
 # Default max rows to collect per scrape run
-MAX_ROWS = 50
+MAX_ROWS = 5
 
 # Max pages to crawl per keyword
-MAX_PAGES_PER_KEYWORD = 5
+MAX_PAGES_PER_KEYWORD = 1
 
 # Selenium wait timeout (seconds)
 REQUEST_TIMEOUT = 15
