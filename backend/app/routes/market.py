@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
-from sqlalchemy import func, desc, case, extract
+from sqlalchemy import func, desc, case, extract, or_, and_
 
 from app import db
 from app.models import (
@@ -202,131 +202,227 @@ def skills_intel():
 
 @market_bp.route("/ai-vulnerability", methods=["GET"])
 def ai_vulnerability():
-    """AI Vulnerability Index with hiring trend and demand data."""
-    limit = max(10, min(200, int(request.args.get("limit", 80))))
+    """AI Vulnerability Index — full dashboard payload.
+
+    Returns:
+        top_high_risk: 20 highest-scored roles
+        top_low_risk: 20 lowest-scored roles
+        signals: hiring decline, ai_tool_mentions, replacement_ratio
+        trend_direction: is overall risk rising or falling?
+        methodology: visible scoring explanation
+        city_heatmap: job counts per city (for map view)
+    """
     city_filter = (request.args.get("city") or "").strip().lower()
 
-    q = db.session.query(
-        AiVulnerabilityScore.job_title_norm,
-        AiVulnerabilityScore.score,
-        AiVulnerabilityScore.confidence,
-        AiVulnerabilityScore.reason,
-        City.name.label("city"),
-    ).outerjoin(City, AiVulnerabilityScore.city_id == City.id)
-
-    if city_filter and city_filter != "all-india":
-        q = q.filter(func.lower(City.name) == city_filter)
-
-    rows = q.order_by(desc(AiVulnerabilityScore.score)).limit(limit).all()
-
-    # ── Compute demand and hiring trend for each role ──
-    # Get all distinct periods
-    all_periods = [
-        r[0]
-        for r in db.session.query(
-            func.date_trunc("month", Job.posted_date).label("m")
-        )
-        .filter(Job.posted_date.isnot(None))
-        .distinct()
-        .order_by(desc("m"))
-        .all()
-    ]
-
-    # Split into recent 3 months vs previous 3 months
-    recent_periods = all_periods[:3] if len(all_periods) >= 3 else all_periods
-    prev_periods = all_periods[3:6] if len(all_periods) >= 6 else []
-
-    role_names = [r.job_title_norm for r in rows]
-
-    # Recent demand per role
-    recent_q = (
-        db.session.query(
-            Job.title_norm,
-            func.count(Job.id).label("demand"),
-        )
-        .filter(
-            Job.title_norm.in_(role_names),
-            Job.posted_date.isnot(None),
-            func.date_trunc("month", Job.posted_date).in_(recent_periods),
-        )
-    )
-    if city_filter and city_filter != "all-india":
-        recent_q = recent_q.join(City, Job.city_id == City.id).filter(
-            func.lower(City.name) == city_filter
-        )
-    recent_demand = {
-        r.title_norm: r.demand
-        for r in recent_q.group_by(Job.title_norm).all()
-    }
-
-    # Previous demand per role
-    prev_demand = {}
-    if prev_periods:
-        prev_q = (
-            db.session.query(
-                Job.title_norm,
-                func.count(Job.id).label("demand"),
-            )
-            .filter(
-                Job.title_norm.in_(role_names),
-                Job.posted_date.isnot(None),
-                func.date_trunc("month", Job.posted_date).in_(prev_periods),
-            )
-        )
-        if city_filter and city_filter != "all-india":
-            prev_q = prev_q.join(City, Job.city_id == City.id).filter(
-                func.lower(City.name) == city_filter
-            )
-        prev_demand = {
-            r.title_norm: r.demand
-            for r in prev_q.group_by(Job.title_norm).all()
-        }
-
-    items = []
-    for r in rows:
-        role = r.job_title_norm or "Unknown"
-        cur = recent_demand.get(role, 0)
-        prev = prev_demand.get(role, 0)
+    # ── Helper: build an item dict for a vuln row ──
+    def _build_item(role_name, score, confidence, reason, city_name,
+                    recent_map, prev_map):
+        cur = recent_map.get(role_name, 0)
+        prev = prev_map.get(role_name, 0)
         if prev > 0:
             trend = round(((cur - prev) / prev) * 100, 1)
         elif cur > 0:
             trend = 100.0
         else:
             trend = 0.0
-
-        items.append({
-            "role": role,
-            "city": r.city or "All India",
-            "riskScore": r.score,
-            "confidence": round(r.confidence or 0, 2),
-            "riskReason": r.reason or "",
+        return {
+            "role": role_name,
+            "city": city_name or "All India",
+            "riskScore": score,
+            "confidence": round(confidence or 0, 2),
+            "riskReason": reason or "",
             "riskLevel": (
-                "Critical" if r.score >= 75
-                else ("High" if r.score >= 50
-                      else ("Medium" if r.score >= 25 else "Low"))
+                "Critical" if score >= 75
+                else ("High" if score >= 50
+                      else ("Medium" if score >= 25 else "Low"))
             ),
             "hiringTrend": trend,
             "latestDemand": cur,
-        })
+        }
 
-    # City heatmap: average vulnerability by city
-    heatmap = (
+    # ── Fetch time periods for trend computation ──
+    all_periods = [
+        r[0] for r in db.session.query(
+            func.date_trunc("month", Job.posted_date).label("m")
+        ).filter(Job.posted_date.isnot(None))
+        .distinct().order_by(desc("m")).all()
+    ]
+    recent_periods = all_periods[:3] if len(all_periods) >= 3 else all_periods
+    prev_periods = all_periods[3:6] if len(all_periods) >= 6 else []
+
+    def _demand_map(role_names, periods):
+        if not periods or not role_names:
+            return {}
+        q = (db.session.query(Job.title_norm, func.count(Job.id).label("d"))
+             .filter(Job.title_norm.in_(role_names),
+                     Job.posted_date.isnot(None),
+                     func.date_trunc("month", Job.posted_date).in_(periods)))
+        if city_filter and city_filter != "all-india":
+            q = q.join(City, Job.city_id == City.id).filter(func.lower(City.name) == city_filter)
+        return {r.title_norm: r.d for r in q.group_by(Job.title_norm).all()}
+
+    # ── 1. Top 20 HIGHEST risk ──
+    high_q = (db.session.query(
+        AiVulnerabilityScore.job_title_norm,
+        AiVulnerabilityScore.score,
+        AiVulnerabilityScore.confidence,
+        AiVulnerabilityScore.reason,
+        City.name.label("city"),
+    ).outerjoin(City, AiVulnerabilityScore.city_id == City.id))
+    if city_filter and city_filter != "all-india":
+        high_q = high_q.filter(func.lower(City.name) == city_filter)
+    high_rows = high_q.order_by(desc(AiVulnerabilityScore.score)).limit(20).all()
+
+    high_names = [r.job_title_norm for r in high_rows]
+    hr_recent = _demand_map(high_names, recent_periods)
+    hr_prev = _demand_map(high_names, prev_periods)
+    top_high = [_build_item(r.job_title_norm, r.score, r.confidence, r.reason,
+                            r.city, hr_recent, hr_prev) for r in high_rows]
+
+    # ── 2. Top 20 LOWEST risk ──
+    low_q = (db.session.query(
+        AiVulnerabilityScore.job_title_norm,
+        AiVulnerabilityScore.score,
+        AiVulnerabilityScore.confidence,
+        AiVulnerabilityScore.reason,
+        City.name.label("city"),
+    ).outerjoin(City, AiVulnerabilityScore.city_id == City.id))
+    if city_filter and city_filter != "all-india":
+        low_q = low_q.filter(func.lower(City.name) == city_filter)
+    low_rows = low_q.order_by(AiVulnerabilityScore.score.asc()).limit(20).all()
+
+    low_names = [r.job_title_norm for r in low_rows]
+    lr_recent = _demand_map(low_names, recent_periods)
+    lr_prev = _demand_map(low_names, prev_periods)
+    top_low = [_build_item(r.job_title_norm, r.score, r.confidence, r.reason,
+                           r.city, lr_recent, lr_prev) for r in low_rows]
+
+    # ── 3. Signals ──
+    # 3a. Hiring decline: roles with biggest drop in demand (recent vs prev)
+    decline_q = (
+        db.session.query(
+            Job.title_norm,
+            func.sum(case((func.date_trunc("month", Job.posted_date).in_(recent_periods), 1), else_=0)).label("recent"),
+            func.sum(case((func.date_trunc("month", Job.posted_date).in_(prev_periods), 1), else_=0)).label("prev"),
+        )
+        .filter(Job.posted_date.isnot(None), Job.title_norm.isnot(None))
+    )
+    if city_filter and city_filter != "all-india":
+        decline_q = decline_q.join(City, Job.city_id == City.id).filter(func.lower(City.name) == city_filter)
+    decline_rows = decline_q.group_by(Job.title_norm).having(
+        func.sum(case((func.date_trunc("month", Job.posted_date).in_(prev_periods), 1), else_=0)) > 5
+    ).all()
+
+    hiring_declines = []
+    for r in decline_rows:
+        rec, pre = int(r.recent or 0), int(r.prev or 0)
+        if pre > 0:
+            pct = round(((rec - pre) / pre) * 100, 1)
+            if pct < -10:
+                hiring_declines.append({"role": r.title_norm, "recent": rec, "previous": pre, "changePct": pct})
+    hiring_declines.sort(key=lambda x: x["changePct"])
+    hiring_declines = hiring_declines[:15]
+
+    # 3b. AI tool mentions in job descriptions
+    AI_KEYWORDS = [
+        "artificial intelligence", "machine learning", "deep learning",
+        "chatgpt", "openai", "llm", "generative ai", "gen ai", "copilot",
+        "automation", "rpa", "robotic process", "ai-powered", "ai powered",
+        "neural network", "nlp", "natural language processing", "computer vision",
+    ]
+    ai_mention_clause = or_(*[
+        func.lower(Job.description).contains(kw) for kw in AI_KEYWORDS
+    ])
+    total_with_desc = db.session.query(func.count(Job.id)).filter(
+        Job.description.isnot(None), Job.description != ""
+    ).scalar() or 1
+    ai_mention_count = db.session.query(func.count(Job.id)).filter(
+        Job.description.isnot(None), ai_mention_clause
+    ).scalar() or 0
+    ai_mention_pct = round((ai_mention_count / total_with_desc) * 100, 1)
+
+    # Top roles with most AI mentions
+    ai_role_mentions = (
+        db.session.query(Job.title_norm, func.count(Job.id).label("cnt"))
+        .filter(Job.description.isnot(None), ai_mention_clause, Job.title_norm.isnot(None))
+        .group_by(Job.title_norm)
+        .order_by(desc("cnt"))
+        .limit(10)
+        .all()
+    )
+
+    # 3c. Role replacement ratio: roles where AI vuln score > 70 AND demand declining
+    high_vuln_roles = {
+        r[0] for r in db.session.query(AiVulnerabilityScore.job_title_norm)
+        .filter(AiVulnerabilityScore.score >= 70).all()
+    }
+    replacement_candidates = [
+        d for d in hiring_declines if d["role"] in high_vuln_roles
+    ]
+
+    signals = {
+        "hiring_declines": hiring_declines,
+        "ai_tool_mentions": {
+            "total_jobs_with_desc": total_with_desc,
+            "jobs_mentioning_ai": ai_mention_count,
+            "pct": ai_mention_pct,
+            "top_roles": [{"role": r.title_norm, "count": r.cnt} for r in ai_role_mentions],
+        },
+        "replacement_ratio": {
+            "high_vuln_declining_roles": len(replacement_candidates),
+            "total_high_vuln_roles": len(high_vuln_roles),
+            "ratio_pct": round((len(replacement_candidates) / max(len(high_vuln_roles), 1)) * 100, 1),
+            "roles": replacement_candidates[:10],
+        },
+    }
+
+    # ── 4. Trend direction: is overall risk rising or falling? ──
+    avg_score = db.session.query(func.avg(AiVulnerabilityScore.score)).scalar() or 50
+    total_scored = db.session.query(func.count(AiVulnerabilityScore.id)).scalar() or 0
+    high_risk_count = db.session.query(func.count(AiVulnerabilityScore.id)).filter(
+        AiVulnerabilityScore.score >= 70).scalar() or 0
+    low_risk_count = db.session.query(func.count(AiVulnerabilityScore.id)).filter(
+        AiVulnerabilityScore.score <= 30).scalar() or 0
+
+    # ── 5. City heatmap: job counts + avg vulnerability per city ──
+    # Scores have city_id=NULL, so join through jobs.title_norm
+    city_jobs = (
+        db.session.query(City.name, func.count(Job.id).label("job_count"))
+        .join(Job, Job.city_id == City.id)
+        .group_by(City.name)
+        .order_by(desc("job_count"))
+        .all()
+    )
+    # Avg vuln per city — match via distinct role names in each city
+    city_vuln = dict(
         db.session.query(
             City.name,
-            func.avg(AiVulnerabilityScore.score).label("avg_score"),
-            func.count(AiVulnerabilityScore.id).label("count"),
+            func.avg(AiVulnerabilityScore.score),
         )
-        .join(City, AiVulnerabilityScore.city_id == City.id)
+        .join(Job, Job.city_id == City.id)
+        .join(AiVulnerabilityScore,
+              AiVulnerabilityScore.job_title_norm == Job.title_norm)
         .group_by(City.name)
-        .order_by(desc("avg_score"))
         .all()
     )
 
     return jsonify({
-        "items": items,
-        "heatmap": [
-            {"city": h.name, "avgScore": round(h.avg_score, 1), "count": h.count}
-            for h in heatmap
+        "top_high_risk": top_high,
+        "top_low_risk": top_low,
+        "signals": signals,
+        "overview": {
+            "avg_score": round(avg_score, 1),
+            "total_scored": total_scored,
+            "high_risk_count": high_risk_count,
+            "low_risk_count": low_risk_count,
+        },
+        "city_heatmap": [
+            {
+                "city": h.name,
+                "jobCount": int(h.job_count),
+                "avgVuln": round(float(city_vuln.get(h.name, 0) or 0), 1),
+            }
+            for h in city_jobs
         ],
     })
 
