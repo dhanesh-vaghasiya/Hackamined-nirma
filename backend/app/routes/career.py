@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
 import re
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func, desc, cast
+from sqlalchemy import func, desc, cast, or_
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.types import Text
 
@@ -20,6 +22,7 @@ from app.models import (
     WorkerProfile,
 )
 from app.services.user_input.services.profile_builder import build_profile
+from app.services.groq_career import assess_ai_vulnerability, suggest_next_roles, build_role_roadmap
 
 career_bp = Blueprint("career", __name__)
 
@@ -40,8 +43,10 @@ def _risk_level(score: int) -> str:
     return "LOW"
 
 
-def _compute_risk_score(title_norm: str, city_name: str, experience: int) -> dict:
-    """Compute risk score from DB signals: vulnerability index + hiring trends + AI mentions."""
+def _compute_risk_score(title_norm: str, city_name: str, experience: int, skills: list | None = None) -> dict:
+    """Compute skill-demand risk from DB signals: skill trends + hiring data + vulnerability index."""
+
+    skills = skills or []
 
     # 1. Get AI vulnerability score for this role
     vuln = (
@@ -49,41 +54,98 @@ def _compute_risk_score(title_norm: str, city_name: str, experience: int) -> dic
         .filter(AiVulnerabilityScore.job_title_norm.ilike(f"%{title_norm}%"))
         .first()
     )
-    base_score = vuln.score if vuln else 50
+    base_vuln = vuln.score if vuln else 50
 
-    # 2. Get hiring trend for this role in this city
+    # 2. City lookup
     city = db.session.query(City).filter(func.lower(City.name) == city_name.lower()).first()
+
+    # 3. Skill demand trends — check each user skill in SkillTrend
+    skill_trends = []
+    declining_skills = []
+    growing_skills = []
+    if skills and city:
+        for sk in skills:
+            # Get most recent trend entries for this skill in this city
+            recent = (
+                db.session.query(SkillTrend)
+                .filter(
+                    func.lower(SkillTrend.skill_name) == sk.lower(),
+                    SkillTrend.city_id == city.id,
+                )
+                .order_by(desc(SkillTrend.period))
+                .limit(3)
+                .all()
+            )
+            if not recent:
+                # Try broader match (any city) as fallback
+                recent = (
+                    db.session.query(SkillTrend)
+                    .filter(func.lower(SkillTrend.skill_name) == sk.lower())
+                    .order_by(desc(SkillTrend.period))
+                    .limit(3)
+                    .all()
+                )
+            if recent:
+                avg_change = sum(t.change_pct or 0 for t in recent) / len(recent)
+                avg_demand = sum(t.demand_count or 0 for t in recent) / len(recent)
+                skill_trends.append({"skill": sk, "avg_change": avg_change, "avg_demand": avg_demand})
+                if avg_change < -5:
+                    declining_skills.append(sk)
+                elif avg_change > 5:
+                    growing_skills.append(sk)
+
+    # 4. Broader job matching — match ANY keyword from title in this city
+    title_words = [w for w in title_norm.split() if len(w) > 2]
     hiring_count = 0
-    hiring_trend_pct = 0.0
-    if city:
+    if city and title_words:
+        conditions = [Job.title_norm.ilike(f"%{w}%") for w in title_words]
         hiring_count = (
             db.session.query(func.count(Job.id))
-            .filter(Job.city_id == city.id, Job.title_norm.ilike(f"%{title_norm}%"))
+            .filter(Job.city_id == city.id, or_(*conditions))
             .scalar() or 0
         )
-        # Compare with general hiring in city
-        total_city = db.session.query(func.count(Job.id)).filter(Job.city_id == city.id).scalar() or 1
-        hiring_trend_pct = round((hiring_count / total_city) * 100, 2)
 
-    # 3. Adjust score based on experience (lower experience = higher risk)
-    exp_factor = max(0, min(15, 15 - experience)) / 15 * 10  # up to +10 for 0 experience
+    total_city = (db.session.query(func.count(Job.id)).filter(Job.city_id == city.id).scalar() or 1) if city else 1
+    hiring_trend_pct = round((hiring_count / total_city) * 100, 2)
 
-    # 4. Adjust based on hiring scarcity
-    scarcity_factor = 0
-    if hiring_count < 5:
-        scarcity_factor = 10
-    elif hiring_count < 20:
-        scarcity_factor = 5
+    # 5. Compute skill demand score (0 = safe, 100 = high risk)
+    # Factor A: avg skill trend (negative change = more risk)
+    if skill_trends:
+        avg_skill_change = sum(s["avg_change"] for s in skill_trends) / len(skill_trends)
+        # Map: +30% growth → 0 risk, -30% decline → 100 risk
+        trend_risk = max(0, min(100, int(50 - avg_skill_change * 1.67)))
+    else:
+        trend_risk = 60  # Unknown skills = moderate risk
 
-    final_score = min(100, max(0, int(base_score + exp_factor + scarcity_factor)))
+    # Factor B: hiring scarcity
+    if hiring_count > 100:
+        hiring_risk = 10
+    elif hiring_count > 50:
+        hiring_risk = 25
+    elif hiring_count > 20:
+        hiring_risk = 40
+    elif hiring_count > 5:
+        hiring_risk = 60
+    else:
+        hiring_risk = 80
 
-    # Build factors list
+    # Factor C: experience buffer
+    exp_risk = max(0, min(20, int((10 - experience) * 2)))
+
+    # Weighted combination
+    final_score = min(100, max(0, int(trend_risk * 0.45 + hiring_risk * 0.35 + exp_risk * 0.20)))
+
+    # Build factors
     factors = []
-    if vuln:
-        factors.append(f"AI vulnerability index for similar roles: {vuln.score}/100")
-        if vuln.reason:
-            factors.append(vuln.reason)
-    factors.append(f"Only {hiring_count} matching jobs found in {city_name}")
+    if declining_skills:
+        factors.append(f"Declining demand for: {', '.join(declining_skills)}")
+    if growing_skills:
+        factors.append(f"Growing demand for: {', '.join(growing_skills)}")
+    factors.append(f"{hiring_count} relevant jobs found in {city_name} ({hiring_trend_pct}% of city market)")
+    if skill_trends:
+        avg_ch = sum(s["avg_change"] for s in skill_trends) / len(skill_trends)
+        direction = "growing" if avg_ch > 0 else "declining"
+        factors.append(f"Your skills are {direction} at avg {abs(avg_ch):.1f}% per quarter")
     if experience < 3:
         factors.append(f"Low experience ({experience} years) increases transition risk")
 
@@ -91,10 +153,13 @@ def _compute_risk_score(title_norm: str, city_name: str, experience: int) -> dic
         "score": final_score,
         "risk_level": _risk_level(final_score),
         "hiring_trend_pct": hiring_trend_pct,
-        "ai_mention_pct": round(base_score / 100 * 67, 1),  # approximate
+        "ai_mention_pct": round(base_vuln / 100 * 67, 1),
         "peer_percentile": min(99, max(1, final_score)),
         "factors": factors,
         "hiring_count": hiring_count,
+        "skill_trends": skill_trends,
+        "declining_skills": declining_skills,
+        "growing_skills": growing_skills,
     }
 
 
@@ -234,7 +299,7 @@ def analyze_career():
         db.session.flush()
 
         # Compute risk score from DB signals
-        risk = _compute_risk_score(title_norm, city_name, experience)
+        risk = _compute_risk_score(title_norm, city_name, experience, skills)
 
         # Save risk assessment
         ra = RiskAssessment(
@@ -278,7 +343,35 @@ def analyze_career():
 
         db.session.commit()
 
-        return jsonify({
+        # --- Groq calls: AI vulnerability + job suggestions ---
+        profile_ctx = {
+            "job_title": job_title,
+            "city": city_name,
+            "experience_years": experience,
+            "skills": skills,
+            "tasks": profile.get("tasks", []),
+            "aspirations": profile.get("aspirations", []),
+            "domain": profile.get("domain"),
+        }
+
+        # 1) AI vulnerability risk via Groq
+        ai_vuln = None
+        try:
+            ai_vuln = assess_ai_vulnerability(profile_ctx)
+        except Exception as e:
+            logging.exception("Groq AI vulnerability assessment failed: %s", e)
+
+        # 2) Job suggestions via Groq
+        job_suggestions = None
+        try:
+            job_suggestions = suggest_next_roles(
+                profile=profile_ctx,
+                risk_data=risk,
+            )
+        except Exception as e:
+            logging.exception("Groq role suggestion failed: %s", e)
+
+        response_data = {
             "profile": {
                 "id": wp.id,
                 "job_title": job_title,
@@ -297,12 +390,87 @@ def analyze_career():
                 "ai_mention_pct": risk["ai_mention_pct"],
                 "peer_percentile": risk["peer_percentile"],
                 "factors": risk["factors"],
+                "hiring_count": risk["hiring_count"],
+                "growing_skills": risk.get("growing_skills", []),
+                "declining_skills": risk.get("declining_skills", []),
+                "skill_trends": risk.get("skill_trends", []),
                 "reskilling_paths": paths,
+                "ai_vulnerability": ai_vuln or {
+                    "automation_risk": 50,
+                    "automation_reason": "Unable to assess — using default estimate.",
+                    "ai_takeover_risk": 50,
+                    "ai_takeover_reason": "Unable to assess — using default estimate.",
+                    "combined_ai_vulnerability": 50,
+                },
             },
-        }), 200
+        }
+
+        if job_suggestions:
+            response_data["analysis"]["job_suggestions"] = job_suggestions
+
+        return jsonify(response_data), 200
 
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         db.session.rollback()
         return jsonify({"error": f"Analysis failed: {str(exc)}"}), 500
+
+
+@career_bp.route("/roadmap", methods=["POST"])
+def generate_roadmap():
+    """Generate a week-by-week reskilling roadmap for a chosen target role via Groq."""
+    if not request.is_json:
+        return jsonify({"error": "Request content-type must be application/json"}), 400
+
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    profile_id = data.get("profile_id")
+    chosen_role = (data.get("chosen_role") or "").strip()
+
+    if not profile_id or not chosen_role:
+        return jsonify({"error": "profile_id and chosen_role are required"}), 400
+
+    try:
+        wp = db.session.query(WorkerProfile).get(int(profile_id))
+        if not wp:
+            return jsonify({"error": "Worker profile not found"}), 404
+
+        city_name = wp.city.name if wp.city else "Unknown"
+
+        # Get latest risk assessment
+        ra = (
+            db.session.query(RiskAssessment)
+            .filter(RiskAssessment.worker_profile_id == wp.id)
+            .order_by(desc(RiskAssessment.created_at))
+            .first()
+        )
+
+        profile_ctx = {
+            "job_title": wp.job_title,
+            "city": city_name,
+            "experience_years": wp.experience_years,
+            "skills": wp.extracted_skills or [],
+            "domain": wp.domain,
+        }
+        risk_ctx = {
+            "score": ra.score if ra else 50,
+            "risk_level": ra.risk_level if ra else "MEDIUM",
+        }
+
+        roadmap = build_role_roadmap(
+            profile=profile_ctx,
+            risk_data=risk_ctx,
+            chosen_role=chosen_role,
+        )
+
+        if not roadmap:
+            return jsonify({"error": "Could not generate roadmap. Please try again."}), 500
+
+        return jsonify({"roadmap": roadmap}), 200
+
+    except Exception as exc:
+        logging.exception("Roadmap generation failed: %s", exc)
+        return jsonify({"error": f"Roadmap generation failed: {str(exc)}"}), 500
