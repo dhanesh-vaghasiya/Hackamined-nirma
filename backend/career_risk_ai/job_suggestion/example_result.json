@@ -1,0 +1,30 @@
+{
+  "current_city_recommendations": [
+    {
+      "role": "Data Analyst",
+      "city": "Bhavnagar",
+      "recommendation_score": 0.84,
+      "confidence": 0.81,
+      "missing_skills": ["sql"],
+      "reasoning_summary": "Strong skill adjacency and good local demand."
+    },
+    {
+      "role": "CRM Executive",
+      "city": "Bhavnagar",
+      "recommendation_score": 0.73,
+      "confidence": 0.74,
+      "missing_skills": ["customer management"],
+      "reasoning_summary": "Moderate adjacency with stable local opportunities."
+    }
+  ],
+  "fallback_city_recommendations": [
+    {
+      "role": "Data Analyst",
+      "city": "Bangalore",
+      "recommendation_score": 0.79,
+      "confidence": 0.78,
+      "missing_skills": ["sql"],
+      "reasoning_summary": "Higher demand concentration in fallback city."
+    }
+  ]
+}

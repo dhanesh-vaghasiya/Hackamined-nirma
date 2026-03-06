@@ -170,7 +170,7 @@ class ReskillingPathStep(db.Model):
 
 # ── 11. CHAT_MESSAGES ───────────────────────────────────────
 class ChatMessage(db.Model):
-    __tablename__ = "chat_messagebs"
+    __tablename__ = "chat_messages"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"))
     worker_profile_id = db.Column(db.Integer, db.ForeignKey("worker_profiles.id"))

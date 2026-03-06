@@ -1,0 +1,57 @@
+{
+  "input": {
+    "current_role": "string",
+    "city": "string",
+    "skills": ["string"],
+    "experience_years": 0,
+    "risk_level": "LOW|MEDIUM|HIGH"
+  },
+  "output": {
+    "best_current_city_role": {
+      "role": "string",
+      "city": "string",
+      "recommendation_score": 0.0,
+      "confidence": 0.0,
+      "missing_skills": ["string"],
+      "reasoning_summary": "string"
+    },
+    "best_overall_role": {
+      "role": "string",
+      "city": "string",
+      "recommendation_score": 0.0,
+      "confidence": 0.0,
+      "missing_skills": ["string"],
+      "reasoning_summary": "string"
+    },
+    "next_step_roles": [
+      {
+        "role": "string",
+        "city": "string",
+        "recommendation_score": 0.0,
+        "confidence": 0.0,
+        "missing_skills": ["string"],
+        "reasoning_summary": "string"
+      }
+    ],
+    "current_city_recommendations": [
+      {
+        "role": "string",
+        "city": "string",
+        "recommendation_score": 0.0,
+        "confidence": 0.0,
+        "missing_skills": ["string"],
+        "reasoning_summary": "string"
+      }
+    ],
+    "fallback_city_recommendations": [
+      {
+        "role": "string",
+        "city": "string",
+        "recommendation_score": 0.0,
+        "confidence": 0.0,
+        "missing_skills": ["string"],
+        "reasoning_summary": "string"
+      }
+    ]
+  }
+}
