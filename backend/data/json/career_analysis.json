@@ -1,0 +1,89 @@
+{
+  "profile": {
+    "normalized_job_title": "Data Entry Operator",
+    "city": "Indore",
+    "experience_years": 2,
+    "skills": [],
+    "tools": [],
+    "tasks": [
+      "manage daily data entry from multiple",
+      "coordinate with operations teams respond to"
+    ],
+    "aspirations": [],
+    "domain": "analytics"
+  },
+  "analysis": {
+    "risk_score": 0.8198044212288258,
+    "risk_level": "HIGH",
+    "features_used": [
+      0.0,
+      0.0008260101415689604,
+      0.3,
+      2
+    ],
+    "explainability": {
+      "base_value": 0.35472886365392,
+      "feature_contributions": {
+        "avg_trend": 0.45010342033076883,
+        "location_score": -8.740179663622167e-05,
+        "automation_risk": -0.0019025600312765154,
+        "experience_years": 0.016962099072051845
+      }
+    },
+    "job_suggestions": {
+      "best_current_city_role": {
+        "role": "Sap Certified Consultant",
+        "city": "Indore",
+        "recommendation_score": 0.5665,
+        "confidence": 1.0,
+        "missing_skills": [],
+        "reasoning_summary": "High transition feasibility with good demand trend"
+      },
+      "best_overall_role": {
+        "role": "Sap Certified Consultant",
+        "city": "Indore",
+        "recommendation_score": 0.5665,
+        "confidence": 1.0,
+        "missing_skills": [],
+        "reasoning_summary": "High transition feasibility with good demand trend"
+      },
+      "next_step_roles": [
+        {
+          "role": "Sap Certified Consultant",
+          "city": "Indore",
+          "recommendation_score": 0.5665,
+          "confidence": 1.0,
+          "missing_skills": [],
+          "reasoning_summary": "High transition feasibility with good demand trend"
+        }
+      ],
+      "current_city_recommendations": [
+        {
+          "role": "Sap Certified Consultant",
+          "city": "Indore",
+          "recommendation_score": 0.5665,
+          "confidence": 1.0,
+          "missing_skills": [],
+          "reasoning_summary": "High transition feasibility with good demand trend"
+        }
+      ],
+      "fallback_city_recommendations": [],
+      "model_info": {
+        "feature_columns": [
+          "semantic_similarity",
+          "skill_overlap_ratio",
+          "skill_gap_count",
+          "candidate_demand_score",
+          "candidate_latest_demand_score",
+          "candidate_trend",
+          "demand_lift_vs_current",
+          "trend_lift_vs_current",
+          "city_switch"
+        ],
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "transition_model": "lightgbm.LGBMClassifier",
+        "rank_model": "lightgbm.LGBMRegressor"
+      }
+    }
+  }
+}

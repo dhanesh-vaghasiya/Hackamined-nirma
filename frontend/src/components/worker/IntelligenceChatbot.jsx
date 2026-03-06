@@ -1,35 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import { sendChatMessage } from "../../services/chatbot";
 
 /* ═══════════════════════════════════════════════════════════════════════
-   SUGGESTION PILLS – shown only on the empty-state screen
+   SUGGESTION PILLS – 5 required question types from PPT
    ═══════════════════════════════════════════════════════════════════════ */
 
 const SUGGESTIONS = [
-  "Why is my score high?",
-  "Show reskilling paths under 3 months",
-  "मुझे कहाँ से शुरू करना चाहिए?",
-  "Which skills are trending in my region?",
+  "Why is my risk score so high?",
+  "What jobs are safer for someone like me?",
+  "Show me paths that take less than 3 months",
+  "How many BPO jobs are in Indore right now?",
+  "मुझे क्या करना चाहिए?",
 ];
-
-/* ═══════════════════════════════════════════════════════════════════════
-   SIMULATED AI RESPONSES
-   ═══════════════════════════════════════════════════════════════════════ */
-
-const AI_REPLY_MAP = {
-  "Why is my score high?":
-    "Your vulnerability score is elevated because AI-tool mentions appear in 67% of similar job postings in your region. The primary factors are task overlap with GPT-based writing tools and automated data-entry systems. I'd recommend upskilling in areas where human judgment remains essential — like stakeholder communication and complex decision-making.",
-  "Show reskilling paths under 3 months":
-    "Here are your best options under 3 months:\n\n1. NPTEL Data Basics (IIT Madras) — 8 weeks, free\n2. SWAYAM AI Fundamentals — 6 weeks, certificate ₹1,000\n3. PMKVY Digital Marketing — 4 weeks, government subsidised\n\nAll three map directly to the emerging skill gaps in your sector.",
-  "मुझे कहाँ से शुरू करना चाहिए?":
-    "आपकी प्रोफ़ाइल के आधार पर, मैं IIT Madras के NPTEL Data Basics कोर्स से शुरू करने की सलाह दूँगा — यह मुफ़्त है, स्व-गति से है, और सीधे आपके क्षेत्र के नियोक्ता जो कौशल खोज रहे हैं उनसे मेल खाता है। उसके बाद, SWAYAM AI Fundamentals प्रोग्राम अंतर को पाटेगा।",
-  "Which skills are trending in my region?":
-    "In your region, the top trending skills are:\n\n• Data Analysis (+42% demand YoY)\n• Digital Marketing (+38%)\n• Cloud Computing Basics (+35%)\n• AI-Assisted Design (+29%)\n\nData Analysis has the highest supply-demand gap, making it your strongest opportunity for reskilling.",
-};
-
-const DEFAULT_AI_REPLY =
-  "I'll look into that for you. Analysing regional data and course availability based on your profile…";
 
 /* ═══════════════════════════════════════════════════════════════════════
    TYPEWRITER HOOK
@@ -138,9 +122,10 @@ const pillItem = {
    Single centered column — no sidebar, ChatGPT/Gemini style
    ═══════════════════════════════════════════════════════════════════════ */
 
-const IntelligenceChatbot = () => {
+const IntelligenceChatbot = ({ profileId }) => {
   const [messages, setMessages] = useState([]);
   const [typingText, setTypingText] = useState(null);
+  const [isWaiting, setIsWaiting] = useState(false);
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -160,21 +145,35 @@ const IntelligenceChatbot = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, displayed]);
 
-  /* ── Send handler ── */
+  /* ── Send handler — calls real backend API ── */
   const handleSend = useCallback(
-    (text) => {
+    async (text) => {
       const msg = (text || input).trim();
-      if (!msg || typingText) return;
+      if (!msg || typingText || isWaiting) return;
       setInput("");
       setMessages((prev) => [...prev, { id: Date.now(), role: "user", text: msg }]);
+      setIsWaiting(true);
 
-      // Simulate AI thinking delay → typewriter reply
-      setTimeout(() => {
-        const reply = AI_REPLY_MAP[msg] || DEFAULT_AI_REPLY;
-        setTypingText(reply);
-      }, 600);
+      try {
+        // Build history from messages for context
+        const history = messages.map((m) => ({
+          role: m.role === "ai" ? "assistant" : "user",
+          content: m.text,
+        }));
+
+        const response = await sendChatMessage({
+          message: msg,
+          profileId: profileId || null,
+          history,
+        });
+        setTypingText(response.reply);
+      } catch {
+        setTypingText("I'm having trouble connecting to the server. Please try again in a moment.");
+      } finally {
+        setIsWaiting(false);
+      }
     },
-    [input, typingText],
+    [input, typingText, isWaiting, messages, profileId],
   );
 
   const isEmpty = messages.length === 0 && !typingText;
@@ -297,7 +296,7 @@ const IntelligenceChatbot = () => {
             />
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || !!typingText}
+              disabled={!input.trim() || !!typingText || isWaiting}
               className="p-2 rounded-lg transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
               style={{ background: "rgba(151,168,122,0.15)" }}
               onMouseEnter={(e) => {
@@ -308,7 +307,11 @@ const IntelligenceChatbot = () => {
                 e.currentTarget.style.background = "rgba(151,168,122,0.15)";
               }}
             >
-              <Send size={15} style={{ color: "#97A87A" }} />
+              {isWaiting ? (
+                <Loader2 size={15} className="animate-spin" style={{ color: "#97A87A" }} />
+              ) : (
+                <Send size={15} style={{ color: "#97A87A" }} />
+              )}
             </button>
           </div>
 

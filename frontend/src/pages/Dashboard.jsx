@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import GlassSelect from "../components/ui/GlassSelect";
 import HiringTrends from "../components/dashboard/HiringTrends";
 import SkillsIntel from "../components/dashboard/SkillsIntel";
 import AiVulnerability from "../components/dashboard/AiVulnerability";
+import MarketRecords from "../components/dashboard/MarketRecords";
 import WorkerPortal from "../components/worker/WorkerPortal";
 import ChatbotPage from "./ChatbotPage";
+import { getMarketSummary } from "../services/market";
 
 /* ── constants ─────────────────────────────────────────────────────── */
-const TABS = ["Hiring Trends", "Skills Intel", "AI Vulnerability"];
+const TABS = ["Hiring Trends", "Skills Intel", "AI Vulnerability", "Data Records"];
 
 const CITY_OPTIONS = [
   { value: "all-india", label: "All India" },
@@ -38,11 +40,12 @@ const TIME_OPTIONS = [
 ];
 
 /* ── tab renderer ──────────────────────────────────────────────────── */
-function renderTab(name) {
+function renderTab(name, filters, onScrapeComplete) {
   switch (name) {
-    case "Hiring Trends":    return <HiringTrends />;
-    case "Skills Intel":     return <SkillsIntel />;
-    case "AI Vulnerability": return <AiVulnerability />;
+    case "Hiring Trends":    return <HiringTrends filters={filters} />;
+    case "Skills Intel":     return <SkillsIntel filters={filters} />;
+    case "AI Vulnerability": return <AiVulnerability filters={filters} />;
+    case "Data Records":     return <MarketRecords filters={filters} onScrapeComplete={onScrapeComplete} />;
     default:                 return null;
   }
 }
@@ -51,7 +54,19 @@ function renderTab(name) {
 const Dashboard = ({ activeLayer }) => {
   const [activeTab, setActiveTab] = useState("Hiring Trends");
   const [city, setCity] = useState("all-india");
-  const [timeframe, setTimeframe] = useState("30d");
+  const [timeframe, setTimeframe] = useState("1yr");
+  const [summary, setSummary] = useState({ rows: 0, unique_roles: 0, unique_cities: 0, vulnerability_roles: 0 });
+  const [profileId, setProfileId] = useState(null);
+
+  const refreshSummary = () => {
+    getMarketSummary()
+      .then((res) => setSummary(res || { rows: 0, unique_roles: 0, unique_cities: 0, vulnerability_roles: 0 }))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshSummary();
+  }, []);
 
   /* ── Worker Portal layer ── */
   if (activeLayer === "Worker Portal") {
@@ -64,7 +79,7 @@ const Dashboard = ({ activeLayer }) => {
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4 }}
         >
-          <WorkerPortal />
+          <WorkerPortal onProfileReady={setProfileId} />
         </motion.div>
       </AnimatePresence>
     );
@@ -81,7 +96,7 @@ const Dashboard = ({ activeLayer }) => {
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4 }}
         >
-          <ChatbotPage />
+          <ChatbotPage profileId={profileId} />
         </motion.div>
       </AnimatePresence>
     );
@@ -155,6 +170,22 @@ const Dashboard = ({ activeLayer }) => {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+        {[
+          { label: "Total Rows", value: summary.rows },
+          { label: "Unique Roles", value: summary.unique_roles },
+          { label: "Unique Cities", value: summary.unique_cities },
+          { label: "Vulnerability Rows", value: summary.vulnerability_roles },
+        ].map((x) => (
+          <div key={x.label} className="oasis-dash-card rounded-xl px-4 py-3">
+            <p className="font-data text-[11px]" style={{ color: "#6B7265" }}>{x.label}</p>
+            <p className="font-brand text-2xl" style={{ color: "#dad7cd", fontWeight: 700 }}>
+              {Number(x.value || 0).toLocaleString("en-IN")}
+            </p>
+          </div>
+        ))}
+      </div>
+
       {/* ── Tab content ── */}
       <motion.div
         key={activeTab}
@@ -162,7 +193,7 @@ const Dashboard = ({ activeLayer }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {renderTab(activeTab)}
+        {renderTab(activeTab, { city, timeframe }, refreshSummary)}
       </motion.div>
     </div>
   );

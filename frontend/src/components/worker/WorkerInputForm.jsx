@@ -7,9 +7,13 @@ import { Briefcase, MapPin, Clock, FileText, Sparkles, Loader2 } from "lucide-re
    ═══════════════════════════════════════════════════════════════════════ */
 
 const CITIES = [
-  "Bengaluru", "Mumbai", "Pune", "Delhi NCR", "Hyderabad",
-  "Chennai", "Indore", "Jaipur", "Nagpur", "Lucknow",
-  "Bhopal", "Surat", "Coimbatore", "Kochi", "Chandigarh",
+  // Tier 1
+  "Bengaluru", "Mumbai", "Delhi NCR", "Hyderabad", "Pune", "Chennai", "Kolkata", "Ahmedabad",
+  // Tier 2
+  "Jaipur", "Indore", "Lucknow", "Bhopal", "Surat", "Nagpur", "Coimbatore", "Kochi",
+  "Chandigarh", "Patna", "Noida", "Gurgaon", "Thiruvananthapuram", "Visakhapatnam", "Vadodara", "Mysuru",
+  // Tier 3
+  "Ranchi", "Dehradun", "Raipur", "Guwahati", "Jodhpur", "Vijayawada",
 ];
 
 const MAX_WORDS = 200;
@@ -69,7 +73,14 @@ const WorkerInputForm = ({ onAnalyze, isAnalyzed, isLoading }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (canSubmit && !isLoading) onAnalyze(form);
+    if (!canSubmit || isLoading) return;
+
+    onAnalyze({
+      job_title: form.jobTitle.trim(),
+      city: form.city.trim(),
+      experience: Number(form.experience),
+      writeup: form.tasks.trim(),
+    });
   };
 
   return (

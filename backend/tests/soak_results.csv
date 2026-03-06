@@ -1,0 +1,4 @@
+round,timestamp,keywords,status_code,elapsed_s,jobs_added,total_in_store,ok,error
+1,2026-03-06 19:15:37,developer,200,22.39,20,20,True,
+2,2026-03-06 19:17:00,analyst,200,19.47,20,40,True,
+3,2026-03-06 19:18:19,engineer,200,16.71,20,60,True,

@@ -6,6 +6,6 @@ import IntelligenceChatbot from "../components/worker/IntelligenceChatbot";
    All layout / glass / pills live inside IntelligenceChatbot itself.
    ═══════════════════════════════════════════════════════════════════════ */
 
-const ChatbotPage = () => <IntelligenceChatbot />;
+const ChatbotPage = ({ profileId }) => <IntelligenceChatbot profileId={profileId} />;
 
 export default ChatbotPage;

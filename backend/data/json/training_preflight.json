@@ -1,0 +1,46 @@
+{
+  "rows": 130749,
+  "unique_roles": 61652,
+  "unique_cities": 4747,
+  "missing_ratio": {
+    "job_title": 0.0,
+    "description": 0.0008183618995173959,
+    "location": 0.00297516615805857,
+    "posted_date": 0.0
+  },
+  "top_roles": {
+    "Software Engineer": 2931,
+    "Business Analyst": 2923,
+    "Data Scientist": 2886,
+    "Graphic Designer": 2051,
+    "Marketing Executive": 1959,
+    "Financial Analyst": 1947,
+    "Product Manager": 1913,
+    "Cyber Security Analyst": 1905,
+    "HR Manager": 1867,
+    "Sales Representative": 1819
+  },
+  "top_cities": {
+    "Bengaluru": 15713,
+    "Hyderabad": 12807,
+    "Pune": 9678,
+    "Chennai": 8342,
+    "Mumbai": 8286,
+    "Noida": 7223,
+    "Kolkata": 4516,
+    "Gurugram": 4395,
+    "Ahmedabad": 3798,
+    "Bangalore": 3534
+  },
+  "recommended": {
+    "risk": {
+      "max_roles": 80,
+      "max_cities": 15
+    },
+    "job_suggestion": {
+      "max_roles": 45,
+      "max_cities": 10,
+      "fallback_city_count": 4
+    }
+  }
+}
