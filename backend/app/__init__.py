@@ -25,10 +25,12 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.user_input import user_input_bp
+    from app.routes.scraper import scraper_bp
 
     app.register_blueprint(main_bp, url_prefix="/api")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_input_bp, url_prefix="/api/user-input")
+    app.register_blueprint(scraper_bp, url_prefix="/api/scraper")
 
     # Create database tables
     with app.app_context():
