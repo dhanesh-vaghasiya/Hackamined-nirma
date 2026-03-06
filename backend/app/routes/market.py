@@ -617,6 +617,42 @@ def market_records():
     })
 
 
+@market_bp.route("/skill-trend", methods=["GET"])
+def skill_trend():
+    """Monthly demand trend for a specific skill, optionally filtered by city.
+
+    Params: ?skill=python&city=all-india
+    Returns 12 months of data with month label + demand count.
+    """
+    skill = (request.args.get("skill") or "").strip().lower()
+    if not skill:
+        return jsonify({"trend": [], "skill": ""})
+
+    city_filter = (request.args.get("city") or "").strip().lower()
+
+    q = (
+        db.session.query(
+            SkillTrend.period,
+            func.sum(SkillTrend.demand_count).label("demand"),
+        )
+        .filter(func.lower(SkillTrend.skill_name) == skill)
+    )
+    if city_filter and city_filter != "all-india":
+        q = q.join(City, SkillTrend.city_id == City.id).filter(
+            func.lower(City.name) == city_filter
+        )
+    rows = q.group_by(SkillTrend.period).order_by(SkillTrend.period).all()
+
+    MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    trend = []
+    for period, demand in rows:
+        label = f"{MONTH_NAMES[period.month - 1]} {period.year}"
+        trend.append({"month": label, "demand": int(demand)})
+
+    return jsonify({"trend": trend, "skill": skill})
+
+
 @market_bp.route("/cities", methods=["GET"])
 def list_cities():
     """Return all cities for dropdown filters."""

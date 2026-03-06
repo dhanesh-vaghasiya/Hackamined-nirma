@@ -45,6 +45,17 @@ export const getJobRoleSkills = async (role) => {
   return data;
 };
 
+export const getSkillTrend = async ({ skill = "", city = "all-india" } = {}) => {
+  const params = new URLSearchParams({ skill, city });
+  const { data } = await api.get(`/market/skill-trend?${params}`);
+  return data;
+};
+
+export const getCities = async () => {
+  const { data } = await api.get("/market/cities");
+  return data;
+};
+
 export const getMarketRecords = async ({ page = 1, pageSize = 100, city = "all-india", q = "" } = {}) => {
   const params = new URLSearchParams();
   params.set("page", String(page));
