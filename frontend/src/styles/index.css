@@ -106,3 +106,118 @@ input[type="number"] {
 .font-data {
   font-family: "Inter", "Plus Jakarta Sans", sans-serif;
 }
+
+/* ── Roadmap Tree View ─────────────────────────────────────────────── */
+.rm-tree {
+  position: relative;
+  padding: 0 4px;
+}
+
+.rm-spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #97A87A 0%, rgba(151, 168, 122, 0.15) 100%);
+  transform: translateX(-50%);
+  z-index: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(151, 168, 122, 0.08);
+}
+
+.rm-row {
+  display: grid;
+  grid-template-columns: 1fr 32px 1fr;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Horizontal connector from center spine to card */
+.rm-row::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  height: 2px;
+  background: rgba(151, 168, 122, 0.3);
+  z-index: 1;
+}
+.rm-row-left::before {
+  right: 50%;
+  width: 32px;
+}
+.rm-row-right::before {
+  left: 50%;
+  width: 32px;
+}
+
+.rm-col-left {
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.rm-col-right {
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.rm-col-center {
+  display: flex;
+  justify-content: center;
+  padding-top: 13px;
+  z-index: 2;
+}
+
+.rm-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #1a1e1a;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.rm-topic-card {
+  max-width: 280px;
+  width: 100%;
+}
+
+/* ── Sub-concept Graph Overlay ────────────────────────────────────── */
+.sc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.sc-panel {
+  position: relative;
+  width: 90%;
+  max-width: 720px;
+  max-height: 80vh;
+  border-radius: 16px;
+  padding: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-canvas-wrap {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.sc-canvas {
+  display: block;
+  min-width: 300px;
+}

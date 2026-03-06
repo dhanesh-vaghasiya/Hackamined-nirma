@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Scan, Activity, AlertTriangle, Briefcase, MapPin, TrendingUp, TrendingDown,
   ChevronRight, Star, BookOpen, ExternalLink, ArrowLeft, Loader2, ShieldCheck, Zap, Bot,
+  Map,
 } from "lucide-react";
 
 import WorkerInputForm from "./WorkerInputForm";
 import RiskScoreGauge from "./RiskScoreGauge";
 import ReskillingStepper from "./ReskillingStepper";
-import { analyzeWorkerProfile, generateRoadmap } from "../../services/career";
+import RoadmapTreeView from "./RoadmapTreeView";
+import { analyzeWorkerProfile, generateRoadmap, fetchDetailedRoadmap } from "../../services/career";
 
 const leftPanel = {
   idle: { flex: "1 1 55%", transition: { duration: 0.55, ease: [0.33, 1, 0.68, 1] } },
@@ -282,18 +284,29 @@ function ResultsPanel({ analysis, profile, profileId }) {
 
   const [selectedRole, setSelectedRole] = useState(null);
   const [roadmap, setRoadmap] = useState(null);
+  const [detailedRoadmap, setDetailedRoadmap] = useState(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapError, setRoadmapError] = useState("");
+  const [roadmapView, setRoadmapView] = useState("weekly"); // "weekly" | "detailed"
 
   const handleSelectRole = async (role) => {
     if (selectedRole === role && roadmap) return;
     setSelectedRole(role);
     setRoadmap(null);
+    setDetailedRoadmap(null);
     setRoadmapError("");
     setRoadmapLoading(true);
+    setRoadmapView("weekly");
     try {
-      const res = await generateRoadmap(profileId, role);
-      setRoadmap(res.roadmap || null);
+      const [weeklyRes, detailedRes] = await Promise.allSettled([
+        generateRoadmap(profileId, role),
+        fetchDetailedRoadmap(role),
+      ]);
+      if (weeklyRes.status === "fulfilled") setRoadmap(weeklyRes.value.roadmap || null);
+      if (detailedRes.status === "fulfilled") setDetailedRoadmap(detailedRes.value.detailed_roadmap || null);
+      if (weeklyRes.status === "rejected" && detailedRes.status === "rejected") {
+        setRoadmapError("Failed to generate roadmaps.");
+      }
     } catch (err) {
       setRoadmapError(err?.response?.data?.error || "Failed to generate roadmap.");
     } finally {
@@ -304,7 +317,9 @@ function ResultsPanel({ analysis, profile, profileId }) {
   const handleBackToRoles = () => {
     setSelectedRole(null);
     setRoadmap(null);
+    setDetailedRoadmap(null);
     setRoadmapError("");
+    setRoadmapView("weekly");
   };
 
   return (
@@ -385,7 +400,41 @@ function ResultsPanel({ analysis, profile, profileId }) {
                 </button>
               </div>
             )}
-            {roadmap && <RoadmapPanel roadmap={roadmap} onBack={handleBackToRoles} />}
+            {!roadmapLoading && !roadmapError && (roadmap || detailedRoadmap) && (
+              <div className="flex gap-1 mb-3">
+                <button
+                  onClick={() => setRoadmapView("weekly")}
+                  className="font-data text-[11px] px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                  style={{
+                    background: roadmapView === "weekly" ? "#97A87A" : "rgba(151,168,122,0.08)",
+                    color: roadmapView === "weekly" ? "#121412" : "#97A87A",
+                    border: `1px solid ${roadmapView === "weekly" ? "#97A87A" : "rgba(151,168,122,0.2)"}`,
+                    fontWeight: roadmapView === "weekly" ? 700 : 500,
+                  }}
+                >
+                  <BookOpen size={11} className="inline mr-1" style={{ marginBottom: 1 }} />
+                  Weekly Plan
+                </button>
+                <button
+                  onClick={() => setRoadmapView("detailed")}
+                  className="font-data text-[11px] px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                  style={{
+                    background: roadmapView === "detailed" ? "#97A87A" : "rgba(151,168,122,0.08)",
+                    color: roadmapView === "detailed" ? "#121412" : "#97A87A",
+                    border: `1px solid ${roadmapView === "detailed" ? "#97A87A" : "rgba(151,168,122,0.2)"}`,
+                    fontWeight: roadmapView === "detailed" ? 700 : 500,
+                  }}
+                >
+                  <Map size={11} className="inline mr-1" style={{ marginBottom: 1 }} />
+                  Detailed Roadmap
+                  {detailedRoadmap?.source === "roadmap.sh" && (
+                    <span className="ml-1 text-[8px] opacity-70">· roadmap.sh</span>
+                  )}
+                </button>
+              </div>
+            )}
+            {roadmapView === "weekly" && roadmap && <RoadmapPanel roadmap={roadmap} onBack={handleBackToRoles} />}
+            {roadmapView === "detailed" && detailedRoadmap && <RoadmapTreeView detailedRoadmap={detailedRoadmap} onBack={handleBackToRoles} />}
           </motion.div>
         ) : (
           <motion.div key="suggestions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>

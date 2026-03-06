@@ -314,3 +314,116 @@ Build a practical, week-by-week roadmap with REAL courses from real platforms (C
         "expected_outcome": parsed.get("expected_outcome", ""),
         "certification_tip": parsed.get("certification_tip", ""),
     }
+
+
+# ── Detailed (topic-tree) roadmap via Groq ──────────────────────────────
+
+DETAILED_ROADMAP_SYSTEM_PROMPT = """\
+You are an expert career roadmap architect.  Given a target role, produce a STRUCTURED
+learning roadmap that lists every major topic and subtopic a learner must cover, ordered
+from beginner to advanced.
+
+RULES:
+- Organise into 8-15 top-level sections (topics).
+- Each section contains 3-10 subtopics (specific things to learn).
+- Order sections from foundational → advanced.
+- Cover: prerequisites, core skills, tools/frameworks, advanced topics, portfolio/project ideas.
+- Be specific — use real technology and concept names, not generic placeholders.
+
+Return ONLY a valid JSON object (no markdown, no extra text):
+{
+  "slug": "role-name-slug",
+  "source": "groq",
+  "total_topics": <int>,
+  "total_subtopics": <int>,
+  "sections": [
+    {
+      "title": "Section Title",
+      "type": "topic",
+      "subtopics": ["Subtopic 1", "Subtopic 2", ...]
+    }
+  ]
+}
+"""
+
+
+def build_detailed_roadmap_groq(role: str) -> dict | None:
+    """Generate a detailed topic-tree roadmap via Groq when roadmap.sh has no match."""
+
+    user_prompt = f"""Build a comprehensive, detailed learning roadmap for someone who wants to become a **{role}**.
+Cover every important topic and subtopic they need to learn, ordered from foundational to advanced.
+Return ONLY valid JSON."""
+
+    raw = _call_groq(DETAILED_ROADMAP_SYSTEM_PROMPT, user_prompt, temperature=0.4, max_tokens=3000)
+    if not raw:
+        return None
+
+    parsed = _parse_json_from_llm(raw)
+    if not isinstance(parsed, dict) or "sections" not in parsed:
+        log.error("Groq detailed roadmap invalid: %s", raw[:200])
+        return None
+
+    return {
+        "slug": parsed.get("slug", role.lower().replace(" ", "-")),
+        "source": "groq",
+        "matched_from_role": role,
+        "total_topics": parsed.get("total_topics", len(parsed["sections"])),
+        "total_subtopics": parsed.get("total_subtopics", sum(len(s.get("subtopics", [])) for s in parsed["sections"])),
+        "sections": parsed["sections"],
+    }
+
+
+# ── Sub-concept learning graph ─────────────────────────────────────
+
+SUBCONCEPT_GRAPH_SYSTEM_PROMPT = """\
+You are an expert educator.
+Given a target role and a topic from a learning roadmap, produce a concept-map
+with exactly 5 or 6 key things a learner must study to fully understand that topic.
+
+RULES:
+- Return exactly 5 or 6 nodes — each is a specific, concrete concept to learn.
+- Return edges connecting related concepts (NOT a strict chain — concepts can connect
+  to multiple others, forming a web/graph like a mind-map).
+- Keep node labels short (2-4 words max).
+- Each node must have a one-line description.
+- Pick one node as the "root" (the most foundational concept).
+
+Return ONLY a valid JSON object (no markdown, no extra text):
+{
+  "topic": "The Topic Name",
+  "nodes": [
+    { "id": "node_1", "label": "Concept Name", "description": "One-line explanation" }
+  ],
+  "edges": [
+    { "from": "node_1", "to": "node_2" }
+  ],
+  "root": "node_1"
+}
+"""
+
+
+def get_topic_subconcepts(role: str, topic: str) -> dict | None:
+    """Ask Groq for a concept-map graph of key things to learn for a topic."""
+
+    user_prompt = (
+        f"A person wants to become a **{role}**. One topic they need to learn is **{topic}**.\n"
+        f"What are the 5-6 most important concepts they must learn to fully understand {topic}?\n"
+        f"Show them as a connected graph — how these concepts relate to each other.\n"
+        f"Return ONLY valid JSON."
+    )
+
+    raw = _call_groq(SUBCONCEPT_GRAPH_SYSTEM_PROMPT, user_prompt, temperature=0.4, max_tokens=2000)
+    if not raw:
+        return None
+
+    parsed = _parse_json_from_llm(raw)
+    if not isinstance(parsed, dict) or "nodes" not in parsed or "edges" not in parsed:
+        log.error("Groq sub-concept graph invalid: %s", raw[:200])
+        return None
+
+    return {
+        "topic": parsed.get("topic", topic),
+        "nodes": parsed["nodes"],
+        "edges": parsed["edges"],
+        "root": parsed.get("root", parsed["nodes"][0]["id"] if parsed["nodes"] else None),
+    }
