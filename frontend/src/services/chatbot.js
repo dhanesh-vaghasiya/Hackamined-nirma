@@ -14,3 +14,13 @@ export const getChatHistory = async (profileId) => {
   const { data } = await api.get(`/chatbot/history${params}`);
   return data;
 };
+
+export const getLatestInsightDeck = async () => {
+  const { data } = await api.get("/chatbot/insight-deck");
+  return data;
+};
+
+export const getInsightDecks = async (limit = 10) => {
+  const { data } = await api.get(`/chatbot/insight-decks?limit=${limit}`);
+  return data;
+};

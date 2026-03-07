@@ -177,4 +177,41 @@ class ChatMessage(db.Model):
     role = db.Column(db.String(10), nullable=False)
     content = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(10), default="en")
+    tool_data = db.Column(db.Text)  # JSON string of tools used by agent
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ── 12. INSIGHT_DECKS ───────────────────────────────────────
+class InsightDeck(db.Model):
+    __tablename__ = "insight_decks"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    question = db.Column(db.Text, nullable=False)
+    # Card 1: User Question Summary
+    topic = db.Column(db.String(200), nullable=False)
+    goal = db.Column(db.String(200), nullable=False)
+    # Card 2: Key Takeaway
+    focus_area = db.Column(db.String(300), nullable=False)
+    key_skills = db.Column(db.Text, nullable=False)       # comma-separated
+    benefit = db.Column(db.String(300), nullable=False)
+    # Card 3: Market Snapshot
+    market_demand = db.Column(db.String(300), nullable=False)
+    market_regions = db.Column(db.String(300), nullable=False)
+    market_description = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "question": self.question,
+            "topic": self.topic,
+            "goal": self.goal,
+            "focus_area": self.focus_area,
+            "key_skills": [s.strip() for s in self.key_skills.split(",") if s.strip()],
+            "benefit": self.benefit,
+            "market_demand": self.market_demand,
+            "market_regions": self.market_regions,
+            "market_description": self.market_description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

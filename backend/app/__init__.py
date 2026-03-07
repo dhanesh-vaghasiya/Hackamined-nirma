@@ -2,7 +2,6 @@ from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from dotenv import load_dotenv
 
 from app.data_paths import configure_data_environment
@@ -11,7 +10,6 @@ load_dotenv()
 
 db = SQLAlchemy()
 jwt = JWTManager()
-migrate = Migrate()
 
 
 def create_app():
@@ -25,8 +23,7 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     jwt.init_app(app)
-    migrate.init_app(app, db)
-    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}}, supports_credentials=True, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    CORS(app, resources={r"/api/.*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}}, supports_credentials=True)
 
     # Register blueprints
     from app.routes.auth import auth_bp

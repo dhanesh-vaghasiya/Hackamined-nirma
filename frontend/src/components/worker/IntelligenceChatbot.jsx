@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { sendChatMessage } from "../../services/chatbot";
+import QuickInsightDeck from "./QuickInsightDeck";
+
+const HIGHLIGHT_MS = 1200;
 
 /* ═══════════════════════════════════════════════════════════════════════
    SUGGESTION PILLS – 5 required question types from PPT
@@ -50,16 +53,23 @@ function useTypewriter(text, speed = 14) {
    CHAT BUBBLE
    ═══════════════════════════════════════════════════════════════════════ */
 
-function ChatBubble({ message, isTyping }) {
+function ChatBubble({ message, isTyping, highlighted }) {
   const isAI = message.role === "ai";
 
   return (
     <motion.div
       layout
+      data-message-id={message.id}
       initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{
+        opacity: 1, y: 0,
+        boxShadow: highlighted
+          ? "0 0 0 2px rgba(151,168,122,0.55)"
+          : "0 0 0 0px transparent",
+      }}
       transition={{ duration: 0.3 }}
-      className={`flex gap-2.5 ${isAI ? "" : "flex-row-reverse"}`}
+      className={`flex gap-2.5 rounded-2xl ${isAI ? "" : "flex-row-reverse"}`}
+      style={highlighted ? { background: "rgba(151,168,122,0.06)" } : undefined}
     >
       {/* Avatar */}
       <div
@@ -127,6 +137,8 @@ const IntelligenceChatbot = ({ profileId }) => {
   const [typingText, setTypingText] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [input, setInput] = useState("");
+  const [insightDecks, setInsightDecks] = useState([]);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -151,7 +163,8 @@ const IntelligenceChatbot = ({ profileId }) => {
       const msg = (text || input).trim();
       if (!msg || typingText || isWaiting) return;
       setInput("");
-      setMessages((prev) => [...prev, { id: Date.now(), role: "user", text: msg }]);
+      const msgId = Date.now();
+      setMessages((prev) => [...prev, { id: msgId, role: "user", text: msg }]);
       setIsWaiting(true);
 
       try {
@@ -167,6 +180,9 @@ const IntelligenceChatbot = ({ profileId }) => {
           history,
         });
         setTypingText(response.reply);
+        if (response.insight_deck) {
+          setInsightDecks((prev) => [{ ...response.insight_deck, messageId: msgId }, ...prev]);
+        }
       } catch {
         setTypingText("I'm having trouble connecting to the server. Please try again in a moment.");
       } finally {
@@ -181,7 +197,34 @@ const IntelligenceChatbot = ({ profileId }) => {
   /* ─────────────────────────────────────────────────────────────────── */
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col mx-auto w-full max-w-3xl px-4 py-4">
+    <div className="h-[calc(100vh-80px)] flex gap-4 mx-auto w-full max-w-6xl px-4 py-4">
+      {/* ── Left: Quick Insight Deck ── */}
+      <div
+        className="hidden lg:flex w-[300px] shrink-0 flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: "rgba(26,29,26,0.60)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(151,168,122,0.20)",
+        }}
+      >
+        <QuickInsightDeck
+          decks={insightDecks}
+          onInsightClick={(messageId) => {
+            const el = scrollRef.current?.querySelector(
+              `[data-message-id="${messageId}"]`
+            );
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              setHighlightedMsgId(messageId);
+              setTimeout(() => setHighlightedMsgId(null), HIGHLIGHT_MS);
+            }
+          }}
+        />
+      </div>
+
+      {/* ── Right: Chat area ── */}
+      <div className="flex-1 flex flex-col min-w-0">
       {/* ── Glassmorphic container ── */}
       <div
         className="flex-1 flex flex-col rounded-2xl overflow-hidden"
@@ -260,7 +303,11 @@ const IntelligenceChatbot = ({ profileId }) => {
             <div className="space-y-4">
               <AnimatePresence>
                 {messages.map((m) => (
-                  <ChatBubble key={m.id} message={m} />
+                  <ChatBubble
+                    key={m.id}
+                    message={m}
+                    highlighted={m.id === highlightedMsgId}
+                  />
                 ))}
               </AnimatePresence>
 
@@ -320,6 +367,7 @@ const IntelligenceChatbot = ({ profileId }) => {
             with your local skill centre.
           </p>
         </div>
+      </div>
       </div>
     </div>
   );
