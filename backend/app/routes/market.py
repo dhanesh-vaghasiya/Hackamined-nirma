@@ -29,6 +29,63 @@ def _get_timeframe_start(tf: str) -> date:
     return today - timedelta(days=365)
 
 
+import re
+
+def clean_title_for_display(title: str) -> str:
+    """Prettifies raw, messy job titles for UI display."""
+    if not title:
+        return "Unknown"
+    t = title.lower()
+    
+    # Remove common recruiter spam phrases
+    spam_phrases = [
+        r"\bis hiring for\b", r"\blooking for\b", r"\burgent opening for\b", r"\burgent hiring for\b",
+        r"\burgent requirement for\b", r"\bopportunity for\b", r"\bcurrently hiring for\b", r"\bhiring for\b", 
+        r"\bimmediate joiners preferred\b", r"\bimmediate joiner\b", r"\bimmediate joining\b",
+        r"\bhot \|\| job requirement for\b", r"\bjob requirement for\b", r"\bjob opportunity\b",
+        r"\bwalk in interview\b", r"\bwalk-in\b", r"\bmega walkin\b", 
+        r"\b\d+\s*lpa\b", r"\b\d+\s*pa\b", r"\b\d+k\-\d+k\b", r"\bctc\b",
+        r"\bdetails inside\b", r"\bapply now\b", r"\bmultiple locations\b",
+        r"\bremote\b", r"\bhybrid\b", r"\bon-site\b", r"\bonsite\b", r"\bwork from home\b", r"\bwfh\b",
+        r"\bexperience required\b", r"\bfresher\b", r"\bfreshers\b", r"\bexperienced\b",
+        r"\bmale\b", r"\bfemale\b", r"\bany graduate\b", r"\burgent\b", r"\bopening\b",
+        r"\betc\b", r"\bpan india\b"
+    ]
+    for phrase in spam_phrases:
+        t = re.sub(phrase, " ", t)
+    
+    cities = [
+        "pune", "mumbai", "bengaluru", "bangalore", "chennai", "hyderabad", 
+        "delhi", "noida", "gurgaon", "kolkata", "ahmedabad"
+    ]
+    for city in cities:
+        t = re.sub(fr"\b{city}\b", " ", t)
+        
+    t = re.sub(r"\bcybage software\b", " ", t)
+    
+    t = re.sub(r"[\|\-\(\)\[\]\{\}\,\:\;]", " ", t)
+    # Target isolated "for"
+    t = re.sub(r"\bfor\b", " ", t)
+    t = re.sub(r"\band\b", " & ", t)
+    
+    t = re.sub(r"\s+", " ", t).strip()
+    
+    special = {"ui": "UI", "ux": "UX", "ai": "AI", "ml": "ML", 
+               "sql": "SQL", "aws": "AWS", "gcp": "GCP", "api": "API",
+               "qa": "QA", "it": "IT", "php": "PHP", "html": "HTML", "css": "CSS"}
+               
+    words = t.split()
+    final_words = []
+    for w in words:
+        if w in special:
+            final_words.append(special[w])
+        else:
+            final_words.append(w.capitalize())
+            
+    res = " ".join(final_words)
+    return res if res else title.title()
+
+
 @market_bp.route("/summary", methods=["GET"])
 def market_summary():
     """Dashboard summary cards."""
@@ -115,7 +172,7 @@ def hiring_trends():
     return jsonify({
         "timeline": [{"month": m, "count": c} for m, c in timeline],
         "top_city_roles": [
-            {"job_title": t or "Unknown", "location": ci, "latest_demand": d}
+            {"job_title": clean_title_for_display(t), "location": ci, "latest_demand": d}
             for t, ci, d in top_city_roles
         ],
     })
@@ -227,7 +284,7 @@ def ai_vulnerability():
         else:
             trend = 0.0
         return {
-            "role": role_name,
+            "role": clean_title_for_display(role_name),
             "city": city_name or "All India",
             "riskScore": score,
             "confidence": round(confidence or 0, 2),
@@ -320,7 +377,7 @@ def ai_vulnerability():
         if pre > 0:
             pct = round(((rec - pre) / pre) * 100, 1)
             if pct < -10:
-                hiring_declines.append({"role": r.title_norm, "recent": rec, "previous": pre, "changePct": pct})
+                hiring_declines.append({"role": clean_title_for_display(r.title_norm), "raw_role": r.title_norm, "recent": rec, "previous": pre, "changePct": pct})
     hiring_declines.sort(key=lambda x: x["changePct"])
     hiring_declines = hiring_declines[:15]
 
@@ -358,7 +415,7 @@ def ai_vulnerability():
         .filter(AiVulnerabilityScore.score >= 70).all()
     }
     replacement_candidates = [
-        d for d in hiring_declines if d["role"] in high_vuln_roles
+        d for d in hiring_declines if d.get("raw_role") in high_vuln_roles
     ]
 
     signals = {
@@ -367,7 +424,7 @@ def ai_vulnerability():
             "total_jobs_with_desc": total_with_desc,
             "jobs_mentioning_ai": ai_mention_count,
             "pct": ai_mention_pct,
-            "top_roles": [{"role": r.title_norm, "count": r.cnt} for r in ai_role_mentions],
+            "top_roles": [{"role": clean_title_for_display(r.title_norm), "count": r.cnt} for r in ai_role_mentions],
         },
         "replacement_ratio": {
             "high_vuln_declining_roles": len(replacement_candidates),
@@ -535,7 +592,7 @@ def job_roles():
         .all()
     )
     return jsonify({
-        "roles": [{"role": r.title_norm, "count": r.count} for r in rows]
+        "roles": [{"role": clean_title_for_display(r.title_norm), "count": r.count} for r in rows]
     })
 
 
@@ -687,7 +744,7 @@ def market_records():
 
     items = [
         {
-            "role": r.title_norm or "Unknown",
+            "role": clean_title_for_display(r.title_norm),
             "city": r.city or "Unknown",
             "latestMonth": r.posted_date.strftime("%Y-%m") if r.posted_date else "",
             "latestDemand": r.demand,

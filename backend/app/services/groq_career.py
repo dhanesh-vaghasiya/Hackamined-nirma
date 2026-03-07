@@ -507,3 +507,63 @@ def get_topic_subconcepts(role: str, topic: str) -> dict | None:
         "edges": parsed["edges"],
         "root": parsed.get("root", parsed["nodes"][0]["id"] if parsed["nodes"] else None),
     }
+
+# ── 4. Flashcards generation ────────────────────────────────────────
+
+FLASHCARDS_SYSTEM_PROMPT = """\
+You are an expert technical educator and interview coach.
+Given a specific job role, a main learning topic, and its sub-concepts, your goal is to generate exactly 8 high-quality study flashcards to test the user's knowledge.
+
+RULES:
+- Generate EXACTLY 8 flashcards.
+- The questions should test practical understanding, edge cases, and core principles relevant to the target role.
+- Keep the questions concise (1-2 sentences).
+- Keep the answers clear and punchy (max 2-3 sentences), explaining the "Why" or "How".
+- Return ONLY a valid JSON array of objects. Do not wrap in a markdown block. Do not include extra text.
+
+Return exactly this structure:
+[
+  {
+    "question": "What is the primary difference between X and Y in this context?",
+    "answer": "X is used for ..., whereas Y is optimized for ... because of ..."
+  }
+]
+"""
+
+def generate_topic_flashcards(role: str, topic: str, subtopics: list[str]) -> list[dict] | None:
+    """Ask Groq to generate 8 study flashcards for a specific topic."""
+    
+    subtopics_str = ", ".join(subtopics) if subtopics else "None provided"
+    
+    user_prompt = (
+        f"A learner is studying to become a **{role}**.\n"
+        f"They are currently reviewing the topic: **{topic}**.\n"
+        f"The core sub-concepts they learned are: {subtopics_str}.\n\n"
+        f"Generate exactly 8 assessment flashcards based on this material. Return ONLY the JSON array."
+    )
+
+    raw = _call_groq(FLASHCARDS_SYSTEM_PROMPT, user_prompt, temperature=0.6, max_tokens=1500)
+    if not raw:
+        return None
+
+    parsed = _parse_json_from_llm(raw)
+    if not isinstance(parsed, list):
+        log.error("Groq flashcards valid list not returned: %s", raw[:200])
+        return None
+        
+    cards = []
+    for item in parsed[:8]:
+        if isinstance(item, dict) and "question" in item and "answer" in item:
+            cards.append({
+                "question": str(item["question"]).strip(),
+                "answer": str(item["answer"]).strip()
+            })
+            
+    # Pad if LLM returned fewer than 8
+    while len(cards) < 8:
+        cards.append({
+            "question": f"Key concept related to {topic}?",
+            "answer": "Review the core principles of this topic to solidify your understanding."
+        })
+
+    return cards[:8]
