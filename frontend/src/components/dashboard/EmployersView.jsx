@@ -309,11 +309,6 @@ function SectorConstellation({ sectors }) {
   const totalSectors = visibleSectors.length;
   const totalJobs = visibleSectors.reduce((a, s) => a + s.total_jobs, 0);
 
-  const selectedData = useMemo(
-    () => (selected ? visibleSectors.find((s) => s.sector === selected) || null : null),
-    [selected, visibleSectors]
-  );
-
   /* Dynamic radius based on container size */
   useEffect(() => {
     const el = containerRef.current;
@@ -343,6 +338,12 @@ function SectorConstellation({ sectors }) {
         };
       }),
     [visibleSectors, count, radius]
+  );
+
+  /* Derive selectedData from nodes so it includes color & Icon */
+  const selectedData = useMemo(
+    () => (selected ? nodes.find((s) => s.sector === selected) || null : null),
+    [selected, nodes]
   );
 
   return (
