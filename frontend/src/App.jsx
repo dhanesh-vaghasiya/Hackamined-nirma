@@ -19,6 +19,7 @@ const NAVBAR_ROUTES = ["/dashboard"];
 function App() {
   const [activeLayer, setActiveLayer] = useState("Market Intelligence");
   const location = useLocation();
+  const isLandingRoute = location.pathname === "/";
 
   const showNavbar = NAVBAR_ROUTES.some((r) =>
     location.pathname.startsWith(r)
@@ -27,7 +28,7 @@ function App() {
   return (
     <>
       {/* ── 3-D particle canvas (always behind everything) ── */}
-      <ParticleNetwork />
+      {!isLandingRoute && <ParticleNetwork />}
 
       {/* ── UI overlay ── */}
       <div className="relative" style={{ zIndex: 10 }}>
