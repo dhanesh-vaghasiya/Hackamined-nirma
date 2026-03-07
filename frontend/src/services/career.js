@@ -22,3 +22,8 @@ export const fetchTopicGraph = async (role, topic) => {
   const { data } = await api.post("/career/topic-graph", { role, topic });
   return data;
 };
+
+export const fetchTopicFlashcards = async (role, topic, subtopics) => {
+  const { data } = await api.post("/career/topic-flashcards", { role, topic, subtopics });
+  return data;
+};

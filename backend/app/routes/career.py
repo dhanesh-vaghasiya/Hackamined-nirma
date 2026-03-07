@@ -22,7 +22,14 @@ from app.models import (
     WorkerProfile,
 )
 from app.services.user_input.services.profile_builder import build_profile
-from app.services.groq_career import assess_ai_vulnerability, suggest_next_roles, build_role_roadmap, build_detailed_roadmap_groq, get_topic_subconcepts
+from app.services.groq_career import (
+    assess_ai_vulnerability, 
+    suggest_next_roles, 
+    build_role_roadmap, 
+    build_detailed_roadmap_groq, 
+    get_topic_subconcepts,
+    generate_topic_flashcards
+)
 from app.services.roadmap_sh import get_detailed_roadmap, match_role_to_slug
 
 career_bp = Blueprint("career", __name__)
@@ -536,3 +543,30 @@ def topic_graph():
     except Exception as exc:
         logging.exception("Topic graph failed: %s", exc)
         return jsonify({"error": f"Topic graph generation failed: {str(exc)}"}), 500
+
+
+@career_bp.route("/topic-flashcards", methods=["POST"])
+def topic_flashcards():
+    """Generate 8 study flashcards for a specific topic within a role."""
+    if not request.is_json:
+        return jsonify({"error": "Request content-type must be application/json"}), 400
+
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    role = (data.get("role") or "").strip()
+    topic = (data.get("topic") or "").strip()
+    subtopics = data.get("subtopics", [])
+    
+    if not role or not topic:
+        return jsonify({"error": "role and topic are required"}), 400
+
+    try:
+        cards = generate_topic_flashcards(role, topic, subtopics)
+        if cards:
+            return jsonify({"flashcards": cards}), 200
+        return jsonify({"error": "Could not generate flashcards."}), 500
+    except Exception as exc:
+        logging.exception("Flashcard generation failed: %s", exc)
+        return jsonify({"error": f"Flashcard generation failed: {str(exc)}"}), 500
