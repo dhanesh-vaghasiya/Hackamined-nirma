@@ -31,6 +31,7 @@ def create_app():
     from app.routes.chatbot import chatbot_bp
     from app.routes.main import main_bp
     from app.routes.market import market_bp
+    from app.routes.roadmap import roadmap_bp
     from app.routes.scraper import scraper_bp
     from app.routes.user_input import user_input_bp
 
@@ -39,6 +40,7 @@ def create_app():
     app.register_blueprint(career_bp, url_prefix="/api/career")
     app.register_blueprint(market_bp, url_prefix="/api/market")
     app.register_blueprint(chatbot_bp, url_prefix="/api/chatbot")
+    app.register_blueprint(roadmap_bp, url_prefix="/api/roadmap")
     app.register_blueprint(scraper_bp, url_prefix="/api/scraper")
     app.register_blueprint(user_input_bp, url_prefix="/api/profile")
 

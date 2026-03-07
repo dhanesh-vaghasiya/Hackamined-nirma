@@ -485,6 +485,46 @@ function ResultsPanel({ analysis, profile, profileId }) {
           </div>
         )}
       </motion.div>
+
+      {/* Roadmap section */}
+      <motion.div variants={section}>
+        {!roadmapData && !roadmapLoading && (
+          <button
+            onClick={onGenerateRoadmap}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 font-brand text-sm font-semibold transition-all"
+            style={{
+              background: "linear-gradient(135deg, rgba(151,168,122,0.15) 0%, rgba(151,168,122,0.08) 100%)",
+              border: "1px solid rgba(151,168,122,0.25)",
+              color: "#97A87A",
+            }}
+          >
+            <Map size={16} />
+            Generate AI Learning Roadmap
+          </button>
+        )}
+
+        {roadmapLoading && (
+          <div
+            className="w-full flex flex-col items-center justify-center gap-3 rounded-2xl px-5 py-8"
+            style={{ background: "rgba(151,168,122,0.04)", border: "1px solid rgba(151,168,122,0.12)" }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+            >
+              <Loader2 size={24} style={{ color: "#97A87A" }} />
+            </motion.div>
+            <p className="font-data text-xs text-center" style={{ color: "#6B7265" }}>
+              AI agent is analyzing market data, generating roadmap &amp; mapping NPTEL courses…
+            </p>
+            <p className="font-data text-[10px]" style={{ color: "#6B7265" }}>
+              This may take up to a minute.
+            </p>
+          </div>
+        )}
+
+        {roadmapData && <RoadmapPanel roadmapData={roadmapData} />}
+      </motion.div>
     </motion.div>
   );
 }
@@ -495,10 +535,15 @@ const WorkerPortal = ({ onProfileReady }) => {
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
+  const [roadmapData, setRoadmapData] = useState(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [lastPayload, setLastPayload] = useState(null);
 
   const handleAnalyze = useCallback(async (payload) => {
     setError("");
     setIsLoading(true);
+    setRoadmapData(null);
+    setLastPayload(payload);
     try {
       const response = await analyzeWorkerProfile(payload);
       setProfile(response.profile || null);
@@ -513,6 +558,30 @@ const WorkerPortal = ({ onProfileReady }) => {
       setIsLoading(false);
     }
   }, []);
+
+  const handleGenerateRoadmap = useCallback(async () => {
+    if (!lastPayload) return;
+    setRoadmapLoading(true);
+    try {
+      const roadmapPayload = {
+        job_title: lastPayload.job_title,
+        city: lastPayload.city,
+        experience: lastPayload.experience,
+        description: lastPayload.writeup || "",
+        user_id: profile?.id,
+      };
+      const res = await generateRoadmap(roadmapPayload);
+      if (res.success) {
+        setRoadmapData(res.data);
+      } else {
+        setError(res.error || "Roadmap generation failed.");
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to generate roadmap.");
+    } finally {
+      setRoadmapLoading(false);
+    }
+  }, [lastPayload, profile]);
 
   return (
     <div className="min-h-[calc(100vh-80px)] px-4 pb-6 pt-2">

@@ -12,6 +12,7 @@
     "CRM",
     "salesforce"
   ],
+  "tools": [],
   "tasks": [
     "handle daily customer escalations",
     "team supervision"

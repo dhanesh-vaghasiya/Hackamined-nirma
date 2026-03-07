@@ -17,7 +17,7 @@ def fetch_available_roadmaps():
         return []
 
     return sorted(
-        [item.get("slug") for item in data if isinstance(item, dict) and item.get("slug")]
+        [str(item.get("slug")) for item in data if isinstance(item, dict) and item.get("slug")]
     )
 
 
