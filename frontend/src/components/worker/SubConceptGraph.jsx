@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, GitBranch } from "lucide-react";
-import { fetchTopicGraph } from "../../services/career";
+import { fetchTopicGraph, fetchTopicFlashcards } from "../../services/career";
+import FlashcardView from "./FlashcardView";
 
 /* ── Bubble colors — OASIS-themed translucent tones ────────────── */
 const BUBBLE_COLORS = [
   { bg: "rgba(151,168,122,0.22)", border: "rgba(151,168,122,0.45)", text: "#dad7cd" },  // sage
-  { bg: "rgba(212,168,83,0.18)",  border: "rgba(212,168,83,0.40)",  text: "#dad7cd" },  // gold
+  { bg: "rgba(212,168,83,0.18)", border: "rgba(212,168,83,0.40)", text: "#dad7cd" },  // gold
   { bg: "rgba(107,114,101,0.25)", border: "rgba(107,114,101,0.45)", text: "#dad7cd" },  // moss
   { bg: "rgba(168,192,142,0.20)", border: "rgba(168,192,142,0.42)", text: "#dad7cd" },  // mint
   { bg: "rgba(218,215,205,0.12)", border: "rgba(218,215,205,0.28)", text: "#dad7cd" },  // sand
@@ -160,6 +161,11 @@ export default function SubConceptGraph({ role, topic, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [flashcards, setFlashcards] = useState(null);
+  const [loadingFlashcards, setLoadingFlashcards] = useState(false);
+  const [flashcardsError, setFlashcardsError] = useState("");
+  const [showFlashcards, setShowFlashcards] = useState(false);
+
   const loadGraph = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -174,6 +180,23 @@ export default function SubConceptGraph({ role, topic, onClose }) {
   }, [role, topic]);
 
   useEffect(() => { loadGraph(); }, [loadGraph]);
+
+  const handleGenerateFlashcards = async () => {
+    if (!graphData) return;
+    setLoadingFlashcards(true);
+    setFlashcardsError("");
+    setFlashcards(null);
+    try {
+      const subtopics = graphData.nodes.map((n) => n.label);
+      const res = await fetchTopicFlashcards(role, topic, subtopics);
+      setFlashcards(res.flashcards);
+      setShowFlashcards(true);
+    } catch (err) {
+      setFlashcardsError(err?.response?.data?.error || "Failed to generate flashcards.");
+    } finally {
+      setLoadingFlashcards(false);
+    }
+  };
 
   const layout = useMemo(() => {
     if (!graphData) return null;
@@ -214,9 +237,40 @@ export default function SubConceptGraph({ role, topic, onClose }) {
           </button>
         </div>
 
-        <p className="font-data text-[9px] mb-2 px-1" style={{ color: "#6B7265" }}>
-          Click any bubble to see a description. Lines show how concepts connect.
-        </p>
+        <div className="flex items-center justify-between mb-2 px-1">
+          <p className="font-data text-[9px]" style={{ color: "#6B7265" }}>
+            Click any bubble to see a description. Lines show how concepts connect.
+          </p>
+
+          {/* Flashcards Button */}
+          {!loading && !error && graphData && (
+            <button
+              onClick={handleGenerateFlashcards}
+              disabled={loadingFlashcards}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+              style={{
+                background: "rgba(212,168,83,0.1)",
+                border: "1px solid rgba(212,168,83,0.25)",
+                color: "#D4A853",
+                opacity: loadingFlashcards ? 0.6 : 1,
+              }}
+            >
+              {loadingFlashcards ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+                  <Loader2 size={12} />
+                </motion.div>
+              ) : (
+                <span className="font-brand font-bold text-[10px] tracking-wide uppercase">Test Knowledge</span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {flashcardsError && (
+          <p className="font-data text-[10px] text-center mb-2" style={{ color: "#DC2626" }}>
+            {flashcardsError}
+          </p>
+        )}
 
         {/* Loading */}
         {loading && (
@@ -275,6 +329,17 @@ export default function SubConceptGraph({ role, topic, onClose }) {
           </div>
         )}
       </motion.div>
+
+      {/* Render Flashcards Modal on top */}
+      <AnimatePresence>
+        {showFlashcards && flashcards && (
+          <FlashcardView
+            flashcards={flashcards}
+            topic={topic}
+            onClose={() => setShowFlashcards(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

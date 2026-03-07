@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import WorkerResultsUI, { EmptyState } from "../components/worker/WorkerResultsUI";
 
 const UserProfile = () => {
 
@@ -18,69 +19,41 @@ const UserProfile = () => {
 
   }, []);
 
-  if (!data) return <p>Loading...</p>;
+  if (!data) return <p className="pt-24 text-center text-white opacity-60">Loading profile data...</p>;
+
+  // Check if profile actually has an ID, meaning a WorkerProfile was generated for this user
+  const hasProfile = !!data.profile?.id;
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-6 flex justify-center text-white">
-      <div className="w-full max-w-3xl space-y-8">
+      <div className="w-full max-w-5xl space-y-8 h-full flex flex-col">
 
         {/* Header Section */}
-        <div className="glass-card-solid p-6 rounded-2xl">
+        <div className="glass-card-solid p-6 rounded-2xl shrink-0">
           <h1 className="text-3xl font-brand font-bold" style={{ color: "var(--color-oasis-forest)" }}>
             {data.user.name}
           </h1>
           <p className="font-data opacity-70 mt-1">{data.user.email}</p>
         </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-1 md://grid-cols-2 gap-6">
-
-          <div className="glass-card p-6 rounded-xl">
-            <h3 className="text-sm font-data opacity-60 uppercase tracking-widest mb-2">Job Title</h3>
-            <p className="text-xl font-brand font-semibold">{data.profile?.job_title || "Not specified"}</p>
-          </div>
-
-          <div className="glass-card p-6 rounded-xl">
-            <h3 className="text-sm font-data opacity-60 uppercase tracking-widest mb-2">Experience</h3>
-            <p className="text-xl font-brand font-semibold">
-              {data.profile?.experience_years !== null && data.profile?.experience_years !== undefined
-                ? `${data.profile.experience_years} years`
-                : "Not specified"}
-            </p>
-          </div>
-
-          <div className="glass-card p-6 rounded-xl md:col-span-2">
-            <h3 className="text-sm font-data opacity-60 uppercase tracking-widest mb-3">Skills</h3>
-            {data.profile?.skills && data.profile.skills.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {data.profile.skills.map((s, i) => (
-                  <span key={i} className="px-3 py-1 text-sm font-data rounded-full border"
-                    style={{ borderColor: "var(--color-oasis-border)", backgroundColor: "var(--color-oasis-card)" }}>
-                    {s}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="font-data opacity-60 italic">No skills listed</p>
-            )}
-          </div>
-
-          <div className="glass-card p-6 rounded-xl md:col-span-2 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-data opacity-60 uppercase tracking-widest mb-1">AI Risk Score</h3>
-              <p className="text-2xl font-brand font-bold" style={{ color: "var(--color-oasis-forest)" }}>
-                {data.risk?.score ?? "N/A"}
+        {/* Main Content Area */}
+        <div className="flex-1 min-h-[500px]">
+          {hasProfile ? (
+            <WorkerResultsUI
+              analysis={data.analysis}
+              profile={data.profile}
+              profileId={data.profile?.id}
+            />
+          ) : (
+            <div className="glass-card rounded-2xl h-full flex flex-col items-center justify-center p-8 text-center min-h-[400px]">
+              <EmptyState />
+              <p className="mt-4 font-data text-sm opacity-60 max-w-md">
+                You haven't generated a worker profile yet. Head over to the Worker Portal on the dashboard to analyze your career and generate a risk roadmap!
               </p>
             </div>
-            <div className="text-right">
-              <span className="px-4 py-2 font-data text-sm font-semibold rounded-lg"
-                style={{ backgroundColor: "rgba(151,168,122,0.15)", color: "var(--color-oasis-forest)" }}>
-                {data.risk?.level ?? "N/A"}
-              </span>
-            </div>
-          </div>
-
+          )}
         </div>
+
       </div>
     </div>
   );
