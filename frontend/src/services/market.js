@@ -75,3 +75,17 @@ export const getMarketRecords = async ({ page = 1, pageSize = 100, city = "all-i
   const { data } = await api.get(`/market/records?${params.toString()}`);
   return data;
 };
+
+/* ── Employer View APIs ── */
+
+export const getEmployerCitySkills = async ({ city = "all-india" } = {}) => {
+  const params = new URLSearchParams({ city });
+  const { data } = await api.get(`/market/employer/city-skills?${params}`);
+  return data;
+};
+
+export const getEmployerSectorHiring = async ({ city = "all-india" } = {}) => {
+  const params = new URLSearchParams({ city });
+  const { data } = await api.get(`/market/employer/sector-hiring?${params}`);
+  return data;
+};

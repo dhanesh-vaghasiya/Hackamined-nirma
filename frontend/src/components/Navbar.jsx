@@ -22,7 +22,7 @@ function OasisLogo() {
 }
 
 /* ── Layer switcher ────────────────────────────────────────────────── */
-const LAYERS = ["Market Intelligence", "Worker Portal", "AI Assistant"];
+const LAYERS = ["Market Intelligence", "Employers View", "Worker Portal", "AI Assistant"];
 
 function LayerSwitcher({ activeLayer, setActiveLayer }) {
   return (

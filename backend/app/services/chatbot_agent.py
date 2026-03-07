@@ -520,7 +520,7 @@ TOOL_DISPATCH = {
 # System prompt builder
 # ═══════════════════════════════════════════════════════════
 
-def zbuild_system_prompt(worker_ctx: dict | None, language: str) -> str:
+def build_system_prompt(worker_ctx: dict | None, language: str) -> str:
     lang_instruction = ""
     if language == "hi":
         lang_instruction = (
