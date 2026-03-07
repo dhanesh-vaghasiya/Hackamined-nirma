@@ -26,10 +26,11 @@ const card = {
 
 function GlassTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
+  const fullLabel = payload[0]?.payload?.month || label;
   return (
     <div className="oasis-tooltip">
       <p className="font-brand text-xs mb-1" style={{ color: "#dad7cd" }}>
-        {label}
+        {fullLabel}
       </p>
       {payload.map((p, i) => (
         <p key={i} className="font-data text-sm font-semibold" style={{ color: "#97A87A" }}>
@@ -328,19 +329,43 @@ const HiringTrends = ({ filters }) => {
 
   const monthlyPostings = useMemo(() => {
     const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    /* Group raw timeline data by "YYYY-MM" key */
     const grouped = new Map();
     for (const point of data.timeline || []) {
       const m = point.month || "";
       const prev = grouped.get(m) || 0;
       grouped.set(m, prev + Number(point.count || 0));
     }
-    return Array.from(grouped.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, postings]) => {
-        const [y, m] = key.split("-");
-        const label = `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
-        return { month: label, postings };
+
+    /* Determine the date range from the data */
+    const keys = Array.from(grouped.keys()).filter(Boolean).sort();
+    if (keys.length === 0) return [];
+
+    const [startYear, startMonth] = keys[0].split("-").map(Number);
+    const [endYear, endMonth] = keys[keys.length - 1].split("-").map(Number);
+
+    /* Build an entry for EVERY month in range, filling gaps with 0 */
+    const result = [];
+    let year = startYear;
+    let month = startMonth;
+
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      const key = `${year}-${String(month).padStart(2, "0")}`;
+      const postings = grouped.get(key) || 0;
+      result.push({
+        month: `${MONTH_NAMES[month - 1]} ${year}`,
+        shortMonth: MONTH_NAMES[month - 1],
+        postings,
       });
+      month++;
+      if (month > 12) {
+        month = 1;
+        year++;
+      }
+    }
+
+    return result;
   }, [data.timeline]);
 
   const sectorData = useMemo(() => {
@@ -383,9 +408,9 @@ const HiringTrends = ({ filters }) => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(151,168,122,0.1)" />
-              <XAxis dataKey="month" tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={{ stroke: "rgba(151,168,122,0.15)" }} tickLine={false} interval={0} angle={-35} textAnchor="end" height={50} />
+              <XAxis dataKey="shortMonth" tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={{ stroke: "rgba(151,168,122,0.15)" }} tickLine={false} interval={0} angle={monthlyPostings.length > 12 ? -45 : 0} textAnchor={monthlyPostings.length > 12 ? "end" : "middle"} height={monthlyPostings.length > 12 ? 55 : 35} />
               <YAxis tick={{ fill: "#6B7265", fontSize: 11, fontFamily: "Inter" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(1)}k`} />
-              <Tooltip content={<GlassTooltip />} />
+              <Tooltip content={<GlassTooltip />} labelFormatter={(_, payload) => payload?.[0]?.payload?.month || _} />
               <Area type="monotone" dataKey="postings" stroke="#97A87A" strokeWidth={2} fill="url(#areaGradient)" dot={false} activeDot={{ r: 4, fill: "#97A87A", stroke: "#121412", strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
