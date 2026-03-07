@@ -12,7 +12,6 @@ from app.models import (
     Job,
     JobSkill,
     SkillTrend,
-    User,
     WorkerProfile,
 )
 
@@ -847,11 +846,10 @@ def _classify_sector(title_norm: str) -> str:
 
 @market_bp.route("/employer/city-skills", methods=["GET"])
 def employer_city_skills():
-    """City-wise aggregated skill availability from platform users.
+    """City-wise aggregated skill availability from worker profiles.
 
-    Priority: 1) User.skills + User.location
-              2) WorkerProfile.extracted_skills + City
-              3) Fallback to job postings / skill_trends
+    Priority: 1) WorkerProfile.extracted_skills + City
+              2) Fallback to job postings / skill_trends
 
     Params: ?city=all-india  (optional, filter to one city)
     """
@@ -859,27 +857,7 @@ def employer_city_skills():
 
     city_map = {}
 
-    # ── Source 1: User table (skills + location) ──
-    user_q = User.query.filter(
-        User.skills.isnot(None),
-        User.location.isnot(None),
-        User.location != "",
-    )
-    if city_filter and city_filter != "all-india":
-        user_q = user_q.filter(func.lower(User.location) == city_filter)
-
-    for u in user_q.all():
-        city_name = u.location.strip().title()
-        if not city_name:
-            continue
-        if city_name not in city_map:
-            city_map[city_name] = {}
-        for skill in (u.skills or []):
-            s = skill.strip()
-            if s:
-                city_map[city_name][s] = city_map[city_name].get(s, 0) + 1
-
-    # ── Source 2: WorkerProfile (extracted_skills + city) ──
+    # ── Source 1: WorkerProfile (extracted_skills + city) ──
     wp_q = (
         db.session.query(WorkerProfile, City.name)
         .join(City, WorkerProfile.city_id == City.id)

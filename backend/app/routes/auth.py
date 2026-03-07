@@ -39,18 +39,10 @@ def register():
     # Hash password and create user
     hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
-    # Optional profile fields
-    skills_raw = data.get("skills", [])
-    if isinstance(skills_raw, str):
-        skills_raw = [s.strip() for s in skills_raw.split(",") if s.strip()]
-    location = (data.get("location") or "").strip()
-
     user = User(
         name=name,
         email=email,
         password_hash=hashed.decode("utf-8"),
-        skills=skills_raw if skills_raw else None,
-        location=location if location else None,
     )
 
     db.session.add(user)
@@ -123,13 +115,6 @@ def update_me():
 
     if "name" in data and data["name"].strip():
         user.name = data["name"].strip()
-    if "location" in data:
-        user.location = (data["location"] or "").strip() or None
-    if "skills" in data:
-        skills_raw = data["skills"]
-        if isinstance(skills_raw, str):
-            skills_raw = [s.strip() for s in skills_raw.split(",") if s.strip()]
-        user.skills = skills_raw if skills_raw else None
 
     db.session.commit()
     return jsonify({"user": user.to_dict()}), 200

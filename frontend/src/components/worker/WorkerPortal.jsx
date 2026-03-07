@@ -275,7 +275,7 @@ function RoadmapPanel({ roadmap, onBack }) {
   );
 }
 
-function ResultsPanel({ analysis, profile, profileId }) {
+function ResultsPanel({ analysis, profile, profileId, roadmapData, roadmapLoading, onGenerateRoadmap }) {
   const skillDemandScore = analysis?.risk_score || 0;
   const paths = analysis?.reskilling_paths || [];
   const factors = analysis?.factors || [];
@@ -289,7 +289,7 @@ function ResultsPanel({ analysis, profile, profileId }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [roadmap, setRoadmap] = useState(null);
   const [detailedRoadmap, setDetailedRoadmap] = useState(null);
-  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [roleRoadmapLoading, setRoleRoadmapLoading] = useState(false);
   const [roadmapError, setRoadmapError] = useState("");
   const [roadmapView, setRoadmapView] = useState("weekly"); // "weekly" | "detailed"
 
@@ -299,7 +299,7 @@ function ResultsPanel({ analysis, profile, profileId }) {
     setRoadmap(null);
     setDetailedRoadmap(null);
     setRoadmapError("");
-    setRoadmapLoading(true);
+    setRoleRoadmapLoading(true);
     setRoadmapView("weekly");
     try {
       const [weeklyRes, detailedRes] = await Promise.allSettled([
@@ -314,7 +314,7 @@ function ResultsPanel({ analysis, profile, profileId }) {
     } catch (err) {
       setRoadmapError(err?.response?.data?.error || "Failed to generate roadmap.");
     } finally {
-      setRoadmapLoading(false);
+      setRoleRoadmapLoading(false);
     }
   };
 
@@ -381,9 +381,9 @@ function ResultsPanel({ analysis, profile, profileId }) {
 
       {/* Show roadmap if a role is selected, otherwise show role suggestions */}
       <AnimatePresence mode="wait">
-        {selectedRole && (roadmap || roadmapLoading || roadmapError) ? (
+        {selectedRole && (roadmap || roleRoadmapLoading || roadmapError) ? (
           <motion.div key="roadmap" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-            {roadmapLoading && (
+            {roleRoadmapLoading && (
               <motion.div className="oasis-dash-card rounded-2xl p-8 flex flex-col items-center justify-center gap-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
                   <Loader2 size={24} style={{ color: "#97A87A" }} />
@@ -404,7 +404,7 @@ function ResultsPanel({ analysis, profile, profileId }) {
                 </button>
               </div>
             )}
-            {!roadmapLoading && !roadmapError && (roadmap || detailedRoadmap) && (
+            {!roleRoadmapLoading && !roadmapError && (roadmap || detailedRoadmap) && (
               <div className="flex gap-1 mb-3">
                 <button
                   onClick={() => setRoadmapView("weekly")}
@@ -523,7 +523,7 @@ function ResultsPanel({ analysis, profile, profileId }) {
           </div>
         )}
 
-        {roadmapData && <RoadmapPanel roadmapData={roadmapData} />}
+        {roadmapData && <RoadmapPanel roadmap={roadmapData} onBack={() => {}} />}
       </motion.div>
     </motion.div>
   );
@@ -607,7 +607,7 @@ const WorkerPortal = ({ onProfileReady }) => {
         <motion.div className="flex-1 min-w-0" style={{ flex: isAnalyzed ? "1 1 62%" : "1 1 45%" }} layout>
           <AnimatePresence mode="wait">
             {isAnalyzed && analysis ? (
-              <ResultsPanel key="results" analysis={analysis} profile={profile} profileId={profile?.id} />
+              <ResultsPanel key="results" analysis={analysis} profile={profile} profileId={profile?.id} roadmapData={roadmapData} roadmapLoading={roadmapLoading} onGenerateRoadmap={handleGenerateRoadmap} />
             ) : (
               <div key="empty" className="oasis-dash-card rounded-2xl h-full">
                 <EmptyState />
