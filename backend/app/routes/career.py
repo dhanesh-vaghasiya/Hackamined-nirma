@@ -255,6 +255,7 @@ def _build_reskilling_paths(title_norm: str, city_name: str, skills: list, risk_
 
 
 @career_bp.route("/analyze", methods=["POST"])
+@jwt_required()
 def analyze_career():
     if not request.is_json:
         return jsonify({"error": "Request content-type must be application/json"}), 400
@@ -285,7 +286,9 @@ def analyze_career():
 
         # Save worker profile to DB
         city = db.session.query(City).filter(func.lower(City.name) == city_name.lower()).first()
+        user_id = get_jwt_identity()
         wp = WorkerProfile(
+            user_id=int(user_id),
             job_title=job_title,
             job_title_norm=title_norm,
             city_id=city.id if city else None,
