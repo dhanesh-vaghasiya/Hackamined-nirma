@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Radar, ShieldCheck, TrendingUp } from "lucide-react";
 import { getMarketSummary } from "../services/market";
+import { useAuth } from "../context/AuthContext";
 
 const features = [
   {
@@ -23,6 +24,7 @@ const features = [
 ];
 
 const Landing = () => {
+  const { user } = useAuth();
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
@@ -57,8 +59,14 @@ const Landing = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="px-4 py-2 rounded-lg font-data text-sm" style={{ color: "#dad7cd", border: "1px solid rgba(151,168,122,0.28)", background: "rgba(218,215,205,0.08)" }}>Sign In</Link>
-            <Link to="/register" className="px-4 py-2 rounded-lg font-brand text-sm" style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}>Start Free</Link>
+            {user ? (
+              <Link to="/dashboard" className="px-4 py-2 rounded-lg font-brand text-sm" style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}>Go to Dashboard</Link>
+            ) : (
+              <>
+                <Link to="/login" className="px-4 py-2 rounded-lg font-data text-sm" style={{ color: "#dad7cd", border: "1px solid rgba(151,168,122,0.28)", background: "rgba(218,215,205,0.08)" }}>Sign In</Link>
+                <Link to="/register" className="px-4 py-2 rounded-lg font-brand text-sm" style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}>Start Free</Link>
+              </>
+            )}
           </div>
         </motion.header>
 
@@ -78,20 +86,32 @@ const Landing = () => {
             OASIS turns live market data into clear decisions for workers and teams: hiring demand, vulnerability scores, and personalized next-step direction.
           </p>
           <div className="flex items-center gap-4">
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-brand text-sm"
-              style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}
-            >
-              Launch Dashboard <ArrowRight size={16} />
-            </Link>
-            <Link
-              to="/dashboard"
-              className="px-5 py-3 rounded-xl font-data text-sm"
-              style={{ color: "#dad7cd", background: "rgba(218,215,205,0.08)", border: "1px solid rgba(151,168,122,0.25)" }}
-            >
-              Continue as Logged User
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-brand text-sm"
+                style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}
+              >
+                Open Dashboard <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-brand text-sm"
+                  style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}
+                >
+                  Get Started <ArrowRight size={16} />
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-5 py-3 rounded-xl font-data text-sm"
+                  style={{ color: "#dad7cd", background: "rgba(218,215,205,0.08)", border: "1px solid rgba(151,168,122,0.25)" }}
+                >
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </motion.section>
 

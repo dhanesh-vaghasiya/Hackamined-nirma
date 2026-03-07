@@ -14,24 +14,31 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
+  // On mount: validate session by calling /auth/me.
+  // The httpOnly cookie is sent automatically — no token in JS.
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    }
-    setLoading(false);
+    const verifySession = async () => {
+      try {
+        const { data } = await api.get("/auth/me");
+        setUser(data.user);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      } catch {
+        // No valid cookie → user is not authenticated
+        localStorage.removeItem("user");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifySession();
   }, []);
 
   const login = async (credentials) => {
     try {
-      // Replace with your actual API endpoint
       const { data } = await api.post("/auth/login", credentials);
-      localStorage.setItem("token", data.token);
+      // Cookie is set automatically by the backend response
       localStorage.setItem("user", JSON.stringify(data.user));
-      api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
       setUser(data.user);
       toast.success("Logged in successfully!");
       return data;
@@ -44,11 +51,9 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      // Replace with your actual API endpoint
       const { data } = await api.post("/auth/register", userData);
-      localStorage.setItem("token", data.token);
+      // Cookie is set automatically by the backend response
       localStorage.setItem("user", JSON.stringify(data.user));
-      api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
       setUser(data.user);
       toast.success("Account created successfully!");
       return data;
@@ -59,12 +64,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
+    try {
+      // Tell backend to clear the httpOnly cookie
+      await api.post("/auth/logout");
+    } catch {
+      // Even if the call fails, clear local state
+    }
     localStorage.removeItem("user");
-    delete api.defaults.headers.common["Authorization"];
     setUser(null);
-    toast.success("Logged out");
+    toast.success("Logged out successfully");
   };
 
   return (

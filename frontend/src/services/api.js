@@ -5,27 +5,23 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,   // Send httpOnly cookies with every request
   timeout: 60000,
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Auth endpoints that should NOT trigger a session wipe on 401
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/register", "/auth/me"];
 
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
+    const requestUrl = error.config?.url || "";
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((ep) => requestUrl.includes(ep));
+
+    // Only redirect for 401 on protected endpoints,
+    // NOT on login/register/me (those handle 401 internally).
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem("user");
       window.location.href = "/login";
     }

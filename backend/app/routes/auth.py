@@ -1,11 +1,18 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+    set_access_cookies,
+    unset_jwt_cookies,
+)
 import bcrypt
 
 from app import db
 from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
+
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -36,10 +43,12 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    # Generate token
+    # Generate token and set as httpOnly cookie
     token = create_access_token(identity=str(user.id))
-
-    return jsonify({"user": user.to_dict(), "token": token}), 201
+    response = jsonify({"user": user.to_dict()})
+    response.status_code = 201
+    set_access_cookies(response, token)
+    return response
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -64,10 +73,20 @@ def login():
     if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
         return jsonify({"message": "Invalid email or password"}), 401
 
-    # Generate token
+    # Generate token and set as httpOnly cookie
     token = create_access_token(identity=str(user.id))
+    response = jsonify({"user": user.to_dict()})
+    set_access_cookies(response, token)
+    return response
 
-    return jsonify({"user": user.to_dict(), "token": token}), 200
+
+@auth_bp.route("/logout", methods=["POST"])
+def logout():
+    """Clear the JWT cookie."""
+    response = jsonify({"message": "Logged out successfully"})
+    unset_jwt_cookies(response)
+    return response
+
 
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()

@@ -1,27 +1,24 @@
 {
   "normalized_job_title": "BPO Team Lead",
-  "city": "Banglore",
-  "experience_years": 5,
+  "city": "Bengaluru",
+  "experience_years": 3,
   "skills": [
-    "data analysis",
+    "python",
     "crm",
-    "analytics",
-    "ai operations"
+    "sales",
+    "analytics"
   ],
   "tools": [
-    "CRM"
+    "CRM",
+    "salesforce"
   ],
   "tasks": [
-    "team supervision",
-    "customer complaint resolution",
-    "agent training",
-    "coordinate escalations",
-    "support operations performance"
+    "handle daily customer escalations",
+    "team supervision"
   ],
   "aspirations": [
-    "analytics",
-    "ai operations",
-    "data analysis workflows"
+    "moving into data analytics",
+    "python"
   ],
   "domain": "customer support"
 }
