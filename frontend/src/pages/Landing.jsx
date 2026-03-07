@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, Radar, ShieldCheck, TrendingUp } from "lucide-react";
 import { getMarketSummary } from "../services/market";
 
+
+
 const features = [
   {
     icon: TrendingUp,
@@ -59,6 +61,9 @@ const Landing = () => {
           <div className="flex items-center gap-3">
             <Link to="/login" className="px-4 py-2 rounded-lg font-data text-sm" style={{ color: "#dad7cd", border: "1px solid rgba(151,168,122,0.28)", background: "rgba(218,215,205,0.08)" }}>Sign In</Link>
             <Link to="/register" className="px-4 py-2 rounded-lg font-brand text-sm" style={{ color: "#121412", background: "#97A87A", fontWeight: 700 }}>Start Free</Link>
+            <button onClick={() => navigate("/profile")}>
+  Profile
+</button>
           </div>
         </motion.header>
 

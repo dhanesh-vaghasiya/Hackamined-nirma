@@ -3,6 +3,7 @@ import Landing from "../pages/Landing";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
+import UserProfile from "../pages/UserProfile";
 import ProtectedRoute from "./ProtectedRoute";
 
 const AppRouter = ({ activeLayer }) => {
@@ -11,6 +12,8 @@ const AppRouter = ({ activeLayer }) => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      {/* Dashboard */}
       <Route
         path="/dashboard"
         element={
@@ -19,6 +22,17 @@ const AppRouter = ({ activeLayer }) => {
           </ProtectedRoute>
         }
       />
+
+      {/* Profile - LOGIN REQUIRED */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

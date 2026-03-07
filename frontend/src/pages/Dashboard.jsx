@@ -12,6 +12,7 @@ import { getMarketSummary } from "../services/market";
 /* ── constants ─────────────────────────────────────────────────────── */
 const TABS = ["Hiring Trends", "Skills Intel", "AI Vulnerability", "Data Records"];
 
+
 const CITY_OPTIONS = [
   { value: "all-india", label: "All India" },
   { value: "mumbai", label: "Mumbai" },
