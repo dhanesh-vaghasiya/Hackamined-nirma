@@ -21,11 +21,20 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(200), nullable=False)
+    skills = db.Column(db.ARRAY(db.Text))
+    location = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "email": self.email, "created_at": self.created_at.isoformat()}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "skills": self.skills or [],
+            "location": self.location or "",
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 # ── 3. JOBS ──────────────────────────────────────────────────

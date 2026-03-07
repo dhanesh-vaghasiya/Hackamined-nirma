@@ -7,6 +7,7 @@ import AiVulnerability from "../components/dashboard/AiVulnerability";
 import MarketRecords from "../components/dashboard/MarketRecords";
 import WorkerPortal from "../components/worker/WorkerPortal";
 import ChatbotPage from "./ChatbotPage";
+import EmployersView from "../components/dashboard/EmployersView";
 import { getMarketSummary } from "../services/market";
 
 /* ── constants ─────────────────────────────────────────────────────── */
@@ -67,6 +68,23 @@ const Dashboard = ({ activeLayer }) => {
   useEffect(() => {
     refreshSummary();
   }, []);
+
+  /* ── Employers View layer ── */
+  if (activeLayer === "Employers View") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="employers"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.4 }}
+        >
+          <EmployersView />
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
   /* ── Worker Portal layer ── */
   if (activeLayer === "Worker Portal") {

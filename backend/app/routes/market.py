@@ -12,6 +12,8 @@ from app.models import (
     Job,
     JobSkill,
     SkillTrend,
+    User,
+    WorkerProfile,
 )
 
 market_bp = Blueprint("market", __name__)
@@ -768,3 +770,248 @@ def job_count():
 
     count = q.scalar() or 0
     return jsonify({"role": role, "city": city or "All India", "count": count})
+
+
+# ═══════════════════════════════════════════════════════════
+# Employer View endpoints — aggregated real-time data
+# ═══════════════════════════════════════════════════════════
+
+# Map normalized job titles → broad sector buckets
+_SECTOR_MAP = {
+    "IT & Software": [
+        "software engineer", "software developer", "backend developer",
+        "frontend developer", "full stack", "fullstack", "web developer",
+        "devops", "cloud engineer", "sre", "site reliability",
+        "java developer", "python developer", ".net developer",
+        "mobile developer", "android developer", "ios developer",
+    ],
+    "Data & AI": [
+        "data scientist", "data analyst", "data engineer", "data entry",
+        "machine learning", "ml engineer", "deep learning",
+        "ai engineer", "nlp engineer", "computer vision",
+        "business intelligence", "bi analyst",
+    ],
+    "Cybersecurity": [
+        "cyber security", "security analyst", "security engineer",
+        "penetration tester", "ethical hacking", "information security",
+    ],
+    "Design & Creative": [
+        "ui/ux", "ux designer", "ui designer", "graphic designer",
+        "product designer", "visual designer", "creative director",
+    ],
+    "Marketing & Sales": [
+        "marketing", "digital marketing", "seo", "content writer",
+        "sales", "business development", "growth", "brand manager",
+    ],
+    "Finance & Accounting": [
+        "financial analyst", "accountant", "finance", "audit",
+        "risk management", "investment", "banking",
+    ],
+    "HR & Operations": [
+        "hr", "human resource", "recruiter", "talent acquisition",
+        "operations", "administration", "office manager",
+    ],
+    "Customer Support & BPO": [
+        "bpo", "customer support", "customer service", "call center",
+        "helpdesk", "technical support",
+    ],
+    "Management & Consulting": [
+        "product manager", "project manager", "scrum master",
+        "business analyst", "management consultant", "program manager",
+    ],
+    "Engineering (Non-IT)": [
+        "mechanical engineer", "civil engineer", "electrical engineer",
+        "quality analyst", "qa engineer", "tester", "automation tester",
+        "network engineer",
+    ],
+    "Education & Training": [
+        "teacher", "professor", "trainer", "instructor", "tutor",
+    ],
+    "Healthcare": [
+        "nurse", "pharmacist", "doctor", "medical", "healthcare",
+    ],
+}
+
+
+def _classify_sector(title_norm: str) -> str:
+    """Classify a normalized job title into a sector bucket."""
+    if not title_norm:
+        return "Other"
+    lower = title_norm.lower()
+    for sector, keywords in _SECTOR_MAP.items():
+        for kw in keywords:
+            if kw in lower:
+                return sector
+    return "Other"
+
+
+@market_bp.route("/employer/city-skills", methods=["GET"])
+def employer_city_skills():
+    """City-wise aggregated skill availability from platform users.
+
+    Priority: 1) User.skills + User.location
+              2) WorkerProfile.extracted_skills + City
+              3) Fallback to job postings / skill_trends
+
+    Params: ?city=all-india  (optional, filter to one city)
+    """
+    city_filter = (request.args.get("city") or "").strip().lower()
+
+    city_map = {}
+
+    # ── Source 1: User table (skills + location) ──
+    user_q = User.query.filter(
+        User.skills.isnot(None),
+        User.location.isnot(None),
+        User.location != "",
+    )
+    if city_filter and city_filter != "all-india":
+        user_q = user_q.filter(func.lower(User.location) == city_filter)
+
+    for u in user_q.all():
+        city_name = u.location.strip().title()
+        if not city_name:
+            continue
+        if city_name not in city_map:
+            city_map[city_name] = {}
+        for skill in (u.skills or []):
+            s = skill.strip()
+            if s:
+                city_map[city_name][s] = city_map[city_name].get(s, 0) + 1
+
+    # ── Source 2: WorkerProfile (extracted_skills + city) ──
+    wp_q = (
+        db.session.query(WorkerProfile, City.name)
+        .join(City, WorkerProfile.city_id == City.id)
+        .filter(WorkerProfile.extracted_skills.isnot(None))
+    )
+    if city_filter and city_filter != "all-india":
+        wp_q = wp_q.filter(func.lower(City.name) == city_filter)
+
+    for wp, city_name in wp_q.all():
+        if city_name not in city_map:
+            city_map[city_name] = {}
+        for skill in (wp.extracted_skills or []):
+            s = skill.strip()
+            if s:
+                city_map[city_name][s] = city_map[city_name].get(s, 0) + 1
+
+    # ── Source 3: Fallback to job postings if user data is sparse ──
+    if sum(len(v) for v in city_map.values()) < 10:
+        jq = (
+            db.session.query(
+                City.name.label("city"),
+                JobSkill.skill_name,
+                func.count(func.distinct(JobSkill.job_id)).label("job_count"),
+            )
+            .join(Job, JobSkill.job_id == Job.id)
+            .join(City, Job.city_id == City.id)
+        )
+        if city_filter and city_filter != "all-india":
+            jq = jq.filter(func.lower(City.name) == city_filter)
+
+        rows = (
+            jq.group_by(City.name, JobSkill.skill_name)
+            .having(func.count(func.distinct(JobSkill.job_id)) >= 2)
+            .order_by(City.name, desc("job_count"))
+            .all()
+        )
+        for city_name, skill, count in rows:
+            if city_name not in city_map:
+                city_map[city_name] = {}
+            city_map[city_name][skill] = city_map[city_name].get(skill, 0) + count
+
+    # ── Source 4: Final fallback to skill_trends ──
+    if not city_map:
+        q2 = (
+            db.session.query(
+                City.name.label("city"),
+                SkillTrend.skill_name,
+                func.sum(SkillTrend.demand_count).label("demand"),
+            )
+            .join(City, SkillTrend.city_id == City.id)
+        )
+        if city_filter and city_filter != "all-india":
+            q2 = q2.filter(func.lower(City.name) == city_filter)
+
+        rows2 = (
+            q2.group_by(City.name, SkillTrend.skill_name)
+            .having(func.sum(SkillTrend.demand_count) >= 5)
+            .order_by(City.name, desc("demand"))
+            .all()
+        )
+        for city_name, skill, demand in rows2:
+            if city_name not in city_map:
+                city_map[city_name] = {}
+            city_map[city_name][skill] = city_map[city_name].get(skill, 0) + int(demand)
+
+    # ── Format: top 15 skills per city, sorted by count ──
+    result = []
+    for city_name, skills_dict in city_map.items():
+        sorted_skills = sorted(skills_dict.items(), key=lambda x: x[1], reverse=True)[:15]
+        total = sum(c for _, c in sorted_skills)
+        result.append({
+            "city": city_name,
+            "skills": [{"skill": s, "count": c} for s, c in sorted_skills],
+            "total_jobs": total,
+        })
+
+    result.sort(key=lambda x: x["total_jobs"], reverse=True)
+    return jsonify({"cities": result})
+
+
+@market_bp.route("/employer/sector-hiring", methods=["GET"])
+def employer_sector_hiring():
+    """Aggregated hiring data by industry/sector derived from job roles.
+
+    Groups normalized job titles into broad sectors and returns counts.
+
+    Params: ?city=all-india  (optional, filter to one city)
+    """
+    city_filter = (request.args.get("city") or "").strip().lower()
+
+    q = (
+        db.session.query(
+            Job.title_norm,
+            City.name.label("city"),
+            func.count(Job.id).label("count"),
+        )
+        .join(City, Job.city_id == City.id)
+        .filter(Job.title_norm.isnot(None))
+    )
+    if city_filter and city_filter != "all-india":
+        q = q.filter(func.lower(City.name) == city_filter)
+
+    rows = q.group_by(Job.title_norm, City.name).all()
+
+    # Aggregate into sectors
+    sector_data = {}
+    for title_norm, city_name, count in rows:
+        sector = _classify_sector(title_norm)
+        if sector not in sector_data:
+            sector_data[sector] = {"sector": sector, "total_jobs": 0, "top_roles": {}, "top_cities": {}}
+        sector_data[sector]["total_jobs"] += count
+
+        # Track top roles within sector
+        role_display = (title_norm or "unknown").title()
+        sector_data[sector]["top_roles"][role_display] = (
+            sector_data[sector]["top_roles"].get(role_display, 0) + count
+        )
+        # Track top cities within sector
+        sector_data[sector]["top_cities"][city_name] = (
+            sector_data[sector]["top_cities"].get(city_name, 0) + count
+        )
+
+    # Format output: sort sectors by total_jobs, trim top roles/cities
+    result = []
+    for sec in sorted(sector_data.values(), key=lambda x: x["total_jobs"], reverse=True):
+        top_roles = sorted(sec["top_roles"].items(), key=lambda x: x[1], reverse=True)[:5]
+        top_cities = sorted(sec["top_cities"].items(), key=lambda x: x[1], reverse=True)[:5]
+        result.append({
+            "sector": sec["sector"],
+            "total_jobs": sec["total_jobs"],
+            "top_roles": [{"role": r, "count": c} for r, c in top_roles],
+            "top_cities": [{"city": c, "count": n} for c, n in top_cities],
+        })
+
+    return jsonify({"sectors": result})
