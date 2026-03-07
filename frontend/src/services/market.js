@@ -26,8 +26,8 @@ export const getSkillsIntel = async ({ city = "all-india", timeframe = "1yr" } =
   return data;
 };
 
-export const getAiVulnerability = async ({ limit = 80, city = "all-india" } = {}) => {
-  const params = new URLSearchParams({ limit, city });
+export const getAiVulnerability = async ({ city = "all-india" } = {}) => {
+  const params = new URLSearchParams({ city });
   const { data } = await api.get(`/market/ai-vulnerability?${params}`);
   return data;
 };
